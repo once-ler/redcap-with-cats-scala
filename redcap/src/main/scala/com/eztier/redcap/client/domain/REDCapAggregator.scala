@@ -1,7 +1,12 @@
 package com.eztier.redcap.client
 package domain
 
-class REDCapAggregator[F[_]: Applicative: Async: Concurrent](metadataService: MetadataService, projectService: ProjectService, recordService: RecordService) {
+import cats.Applicative
+import cats.data.Chain
+import cats.effect.{Async, Concurrent}
+import fs2.Stream
+
+class REDCapAggregator[F[_]: Applicative: Async: Concurrent](metadataService: MetadataService[F], projectService: ProjectService[F], recordService: RecordService[F]) {
   def importMetadata(metadata: Option[Metadata] = None): Stream[F, ApiResp] =
     metadataService.importData(metadata)
   

@@ -1,6 +1,11 @@
 package com.eztier.redcap.client
 package domain
 
+import algae.mtl.MonadLog
+import cats.data.Chain
+import cats.{Functor, Monad}
+import fs2.Stream
+
 class RecordService[F[_]: Functor: Monad : MonadLog[?[_], Chain[String]]](repository: RecordAlgebra[F]) {
   val logs = implicitly[MonadLog[F, Chain[String]]]
 

@@ -1,6 +1,8 @@
 package com.eztier.redcap.client
 package domain
 
+import java.time.Instant
+
 case class Project
 (
   ProjectId: Option[Long] = None,

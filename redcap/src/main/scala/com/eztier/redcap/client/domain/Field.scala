@@ -20,5 +20,3 @@ case class Field
   TextValidationMax: Option[String] = None, // Maximum value for validation
   TextValidationTypeOrShowSliderNumber: Option[String] = None // Validation type  
 )
-
-type Metadata = List[Field]
