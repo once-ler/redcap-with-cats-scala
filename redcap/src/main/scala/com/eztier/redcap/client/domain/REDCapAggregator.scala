@@ -19,8 +19,8 @@ class REDCapAggregator[F[_]: Applicative: Async: Concurrent](metadataService: Me
   def exportProject(): Stream[F, Either[Chain[String], Project]] =
     projectService.exportData()
 
-  def importRecord[A](options: Map[String, String]): Stream[F, ApiResp] =
-    recordService.importData(options)
+  def importRecord[A](records: A, options: Map[String, String]): Stream[F, ApiResp] =
+    recordService.importData(records, options)
 
   def exportRecord[A](options: Map[String, String]): Stream[F, Either[Chain[String], A]] =
     recordService.exportData(options)

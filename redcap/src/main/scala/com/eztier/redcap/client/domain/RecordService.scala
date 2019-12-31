@@ -9,8 +9,8 @@ import fs2.Stream
 class RecordService[F[_]: Functor: Monad : MonadLog[?[_], Chain[String]]](repository: RecordAlgebra[F]) {
   val logs = implicitly[MonadLog[F, Chain[String]]]
 
-  def importData[A](options: Map[String, String]): Stream[F, ApiResp] =
-    repository.importData[A](options)
+  def importData[A](records: A, options: Map[String, String]): Stream[F, ApiResp] =
+    repository.importData[A](records, options)
 
   def exportData[A](options: Map[String, String]): Stream[F, Either[Chain[String], A]] =
     repository.exportData(options)

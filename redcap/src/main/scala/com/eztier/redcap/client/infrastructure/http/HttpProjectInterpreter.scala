@@ -8,5 +8,5 @@ import cats.effect.{ConcurrentEffect, ContextShift}
 import org.http4s.Request
 
 class HttpProjectInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]] extends HttpClient[F] {
-  override def createRequest: Request[F] = ???
+
 }
