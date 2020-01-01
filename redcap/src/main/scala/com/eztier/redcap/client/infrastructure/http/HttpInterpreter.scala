@@ -78,7 +78,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
 
       Stream.emit(maybeA match {
         case Right(a) => Right(a)
-        case Left(e) => Left(Chain.one(e.getMessage()))
+        case Left(e) => Left(Chain.one(in))
       })
     }
 
