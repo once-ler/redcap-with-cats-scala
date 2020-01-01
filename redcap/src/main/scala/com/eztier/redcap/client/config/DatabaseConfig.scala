@@ -1,4 +1,5 @@
-package com.eztier.redcap.client
+package com.eztier
+package redcap.client
 package config
 
 import cats.implicits._

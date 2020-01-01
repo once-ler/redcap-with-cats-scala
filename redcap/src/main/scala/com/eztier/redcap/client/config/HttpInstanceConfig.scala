@@ -3,5 +3,6 @@ package config
 
 case class HttpInstanceConfig
 (
-  patient: HttpConfig
+  local: HttpConfig,
+  remote: HttpConfig
 )

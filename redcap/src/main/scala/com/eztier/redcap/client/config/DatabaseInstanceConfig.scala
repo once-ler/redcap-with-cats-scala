@@ -4,5 +4,5 @@ package config
 case class DatabaseInstanceConfig
 (
   local: DatabaseConfig,
-  dwh: DatabaseConfig
+  remote: DatabaseConfig
 )

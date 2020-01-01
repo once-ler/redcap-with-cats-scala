@@ -115,3 +115,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
 
   }
 }
+
+object HttpInterpreter {
+  def apply[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]]: HttpInterpreter[F] = new HttpInterpreter[F]
+}

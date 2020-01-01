@@ -14,9 +14,11 @@ package object domain {
 
   type Metadata = List[Field]
 
+  /*
   implicit val encodeInstant: Encoder[Instant] = Encoder.encodeString.contramap[Instant](i => instantToString(i, Some(defaultDateTimeFormatterString)))
 
   implicit val decodeInstant: Decoder[Instant] = Decoder.decodeString.emapTry { str =>
     Try(stringToInstant(str, Some(defaultDateTimeFormatterString)))
   }
+  */
 }
