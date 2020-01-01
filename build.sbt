@@ -1,6 +1,6 @@
 libraryDependencies in ThisBuild += compilerPlugin(kindProjectorPlugin)
 
-name := "cats-playground-scala"
+name := "redcap-with-cats-scala"
 // scalaVersion in ThisBuild := "2.12.8"
 
 lazy val compilerOptions = Seq(
