@@ -15,6 +15,9 @@ class ApiService[F[_]: Functor: Monad : MonadLog[?[_], Chain[String]]](repositor
 
   def exportData[A](options: Chain[(String, String)])(implicit ev: Decoder[A]): Stream[F, Either[Chain[String], A]] =
     repository.exportData(options)
+
+  def createProject[A](data: A, odm: Option[String] = None)(implicit ev: Encoder[A]): Stream[F, ApiResp] =
+    repository.createProject[A](data, odm)
 }
 
 object ApiService {

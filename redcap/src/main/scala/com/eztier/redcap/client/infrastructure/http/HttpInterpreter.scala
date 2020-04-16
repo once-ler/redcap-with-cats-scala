@@ -114,6 +114,19 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
       .flatMap(toMaybeTypeS)
 
   }
+
+  override def createProject[A](data: A, odm: Option[String])(implicit ev: Encoder[A]): Stream[F, ApiResp] = {
+    val formData = UrlForm("data" -> data.asJson.noSpaces) + odm match {
+      case Some(a) => ("odm" -> a)
+      case None => Map.empty
+    }
+
+    val request: Request[F] = createRequest(formData)
+
+    clientBodyStream(request)
+      .flatMap(toApiResponseS)
+  }
+
 }
 
 object HttpInterpreter {
