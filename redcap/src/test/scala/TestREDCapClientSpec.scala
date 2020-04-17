@@ -59,23 +59,23 @@ class TestREDCapClientSpec extends Specification {
 
         apiService.readAllFromFile(odmFilePath)
             .flatMap { x =>
-              
-              
               apiService.importData[Project](proj, Chain(
-                ("content" -> "project"), ("odm" -> "")
+                ("content" -> "project"), ("odm" -> x)
               )).flatMap {
                 in =>
                   in match {
-                    case Right(m) => println(m)
-                    case Left(e) => println(e.show)
+                    case ApiOk(body) => println(body)
+                    case ApiError(body, error) => println(body, error)
                   }
 
                   Stream.emit(())
               }
             }.compile.drain.unsafeRunSync()
 
+          IO.unit
         }.unsafeRunSync()
 
+      1 mustEqual 1
     }
   }
 

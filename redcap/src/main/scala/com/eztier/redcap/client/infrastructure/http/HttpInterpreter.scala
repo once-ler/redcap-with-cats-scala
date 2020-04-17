@@ -6,27 +6,36 @@ package http
 import cats.syntax.semigroup._
 import cats.data.Chain
 import cats.{Applicative, Functor}
-import cats.effect.{ConcurrentEffect, ContextShift, Blocker}
+import cats.effect.{Blocker, ConcurrentEffect, ContextShift}
+import cats.implicits._
 import fs2.{Pipe, Stream}
-import fs2.text.{utf8DecodeC, utf8Decode, utf8Encode}
+import fs2.text.{utf8Decode, utf8DecodeC, utf8Encode}
 import io.circe._
-import io.circe.generic.extras._ // For snakecase member names.
+import io.circe.generic.extras._
 import io.circe.syntax._
 import io.circe.parser._
 import io.circe.optics.JsonPath._
 import java.nio.file.Paths
+import java.util.concurrent.Executors
+
 import org.http4s.{Charset, EntityBody, Header, Headers, HttpVersion, Method, Request, Uri, UrlForm}
 import org.http4s.client.blaze.BlazeClientBuilder
-
 import common.{MonadLog, _}
 import common.Util._
 import domain._
 import com.eztier.redcap.client.config.HttpConfig
 
+import scala.concurrent.ExecutionContext
+
 class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
-  (conf: HttpConfig)(implicit logs: MonadLog[F, Chain[String]]) extends WithBlockingEcStream with ApiAlgebra[F] {
+  (conf: HttpConfig)(implicit logs: MonadLog[F, Chain[String]])
+  extends ApiAlgebra[F] {
 
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+
+  private val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(4))
+  private val client = BlazeClientBuilder(pool)
+  private val blocker = Blocker.liftExecutionContext(pool)
 
   val headers = Headers.of(Header("Accept", "*/*"))
 
@@ -43,17 +52,16 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
   )
 
   def clientBodyStream(request: Request[F]): Stream[F, String] =
-    blockingEcStream.flatMap { ec =>
-      for {
-        client <- BlazeClientBuilder[F](ec).stream
-        plainRequest <- Stream.eval[F, Request[F]](Applicative[F].pure[Request[F]](request))
-        entityBody <- client.stream(plainRequest).flatMap(_.body.chunks).through(utf8DecodeC)
-      } yield entityBody
-    }.handleErrorWith { e =>
-      val ex = WrapThrowable(e).printStackTraceAsString
-      Stream.eval(logs.log(Chain.one(s"${ex}")))
-        .flatMap(a => Stream.emit(ex))
-    }
+    for {
+      client <- client.stream
+      plainRequest <- Stream.eval[F, Request[F]](Applicative[F].pure[Request[F]](request))
+      entityBody <- client.stream(plainRequest).flatMap(_.body.chunks).through(utf8DecodeC)
+        .handleErrorWith { e =>
+          val ex = WrapThrowable(e).printStackTraceAsString
+          Stream.eval(logs.log(Chain.one(s"${ex}")))
+            .flatMap(a => Stream.emit(ex))
+        }
+    } yield entityBody
 
   def toApiResponseS: String => Stream[F, ApiResp] =
     in => {
@@ -80,18 +88,17 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
         case Left(e) => Left(Chain.one(in))
       })
     }
-  
+
   def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
-    Stream.resource(Blocker[F]).flatMap { blocker =>
-      for {
-        r <- fs2.io.file.readAll[F](Paths.get(path), blocker, bufferSize)
-          .through(utf8Decode)
-      } yield r
-    }.handleErrorWith { e =>
-      val ex = WrapThrowable(e).printStackTraceAsString
-      Stream.eval(logs.log(Chain.one(s"${ex}")))
-        .flatMap(a => Stream.emit(ex))
-    }
+    for {
+      str <- fs2.io.file.readAll[F](Paths.get(path), blocker, bufferSize)
+        .through(utf8Decode)
+        .handleErrorWith { e =>
+          val ex = WrapThrowable(e).printStackTraceAsString
+          Stream.eval(logs.log(Chain.one(s"${ex}")))
+            .flatMap(a => Stream.emit(ex))
+        }
+    } yield str
 
   private def createRequest(formData: UrlForm) =
     Request[F](
@@ -105,7 +112,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
     val j: Json = data.asJson
 
-    val formData = UrlForm.fromChain(defaultRequestBody |+| options) + ("data" -> j.noSpaces)
+    val formData = UrlForm.fromChain(defaultRequestBody <+> options) + ("data" -> j.noSpaces)
 
     // val a: Entity[F] = UrlForm.entityEncoder(charset).toEntity(formData)
 
@@ -117,7 +124,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   override def exportData[A](options: Chain[(String, String)])(implicit ev: Decoder[A]): Stream[F, Either[Chain[String], A]] = {
     // ("content" -> "record")
-    val formData = UrlForm.fromChain(defaultRequestBody |+| options)
+    val formData = UrlForm.fromChain(defaultRequestBody <+> options)
 
     val request: Request[F] = createRequest(formData)
 
@@ -127,6 +134,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
   }
 
   override def createProject[A](data: A, odm: Option[String])(implicit ev: Encoder[A]): Stream[F, ApiResp] = {
+    /*
     val maybeOdm: Chain[(String, String)] = odm match {
       case Some(a) => Chain.one("odm" -> a)
       case None => Chain.empty
@@ -138,6 +146,8 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
     clientBodyStream(request)
       .flatMap(toApiResponseS)
+  */
+    ???
   }
 
 }
