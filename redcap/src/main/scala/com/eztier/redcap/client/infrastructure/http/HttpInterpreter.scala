@@ -8,15 +8,17 @@ import cats.syntax.semigroup._
 import cats.data.Chain
 import cats.{Applicative, Functor}
 import cats.effect.{ConcurrentEffect, ContextShift}
-import org.http4s.{Charset, EntityBody, Header, Headers, HttpVersion, Method, Request, Uri, UrlForm}
 import fs2.{Pipe, Stream}
 import fs2.text.{utf8DecodeC, utf8Encode}
-import org.http4s.client.blaze.BlazeClientBuilder
 import io.circe._
 import io.circe.generic.extras._ // For snakecase member names.
 import io.circe.syntax._
 import io.circe.parser._
 import io.circe.optics.JsonPath._
+import java.nio.file.Paths
+import org.http4s.{Charset, EntityBody, Header, Headers, HttpVersion, Method, Request, Uri, UrlForm}
+import org.http4s.client.blaze.BlazeClientBuilder
+
 import common.Util._
 import domain._
 import com.eztier.redcap.client.config.HttpConfig
@@ -43,18 +45,16 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
   )
 
   def clientBodyStream(request: Request[F]): Stream[F, String] =
-    blockingEcStream.flatMap {
-      ec =>
-        for {
-          client <- BlazeClientBuilder[F](ec).stream
-          plainRequest <- Stream.eval[F, Request[F]](Applicative[F].pure[Request[F]](request))
-          entityBody <- client.stream(plainRequest).flatMap(_.body.chunks).through(utf8DecodeC)
-        } yield entityBody
-    }.handleErrorWith {
-      e =>
-        val ex = WrapThrowable(e).printStackTraceAsString
-        Stream.eval(logs.log(Chain.one(s"${ex}")))
-          .flatMap(a => Stream.emit(ex))
+    blockingEcStream.flatMap { ec =>
+      for {
+        client <- BlazeClientBuilder[F](ec).stream
+        plainRequest <- Stream.eval[F, Request[F]](Applicative[F].pure[Request[F]](request))
+        entityBody <- client.stream(plainRequest).flatMap(_.body.chunks).through(utf8DecodeC)
+      } yield entityBody
+    }.handleErrorWith { e =>
+      val ex = WrapThrowable(e).printStackTraceAsString
+      Stream.eval(logs.log(Chain.one(s"${ex}")))
+        .flatMap(a => Stream.emit(ex))
     }
 
   def toApiResponseS: String => Stream[F, ApiResp] =
@@ -82,6 +82,19 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
         case Left(e) => Left(Chain.one(in))
       })
     }
+
+  def readAllFromFile(path: String): Stream[F, String] = {
+    blockingEcStream.flatMap { ec =>
+      for {
+        r <- io.file.readAll[IO](Paths.get(path), blocker, 8192)
+          .through(text.utf8Decode)
+      } yield r
+    }.handleErrorWith { e =>
+      val ex = WrapThrowable(e).printStackTraceAsString
+      Stream.eval(logs.log(Chain.one(s"${ex}")))
+        .flatMap(a => Stream.emit(ex))
+    }
+  }  
 
   private def createRequest(formData: UrlForm) =
     Request[F](
