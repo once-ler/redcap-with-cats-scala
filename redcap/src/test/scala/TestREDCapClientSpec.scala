@@ -48,11 +48,24 @@ class TestREDCapClientSpec extends Specification {
         case apiService =>
 
           val proj = Project(
-            token = Some(""),
-            content = 
+            ProjectTitle = "Template Test 01 API",
+            Purpose = Some(4),
+            ProjectNotes = "20-XXXXXX"
           )
 
-          apiService.createProject[Project]()
+          apiService.importData[Project](Chain(
+            ("content" -> "project"), ("odm" -> "")
+          )).flatMap {
+            in =>
+              in match {
+                case Right(m) => println(m)
+                case Left(e) => println(e.show)
+              }
+
+              Stream.emit(())
+          }
+          .compile.drain.unsafeRunSync()
+        }.unsafeRunSync()
 
     }
   }
