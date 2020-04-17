@@ -5,7 +5,7 @@ package test
 import cats.implicits._
 import cats.data.Chain
 import cats.effect.IO
-import fs2.{io, text, Stream}
+import fs2.{text, Stream}
 import java.nio.file.Paths
 
 import org.specs2.mutable._
@@ -46,20 +46,22 @@ class TestREDCapClientSpec extends Specification {
 
     "Create new project with ODM" in {
 
-      val odmFilePath = System.getProperty("user.dir") + "/test-odm-template.xml"
+      val odmFilePath = System.getProperty("user.dir") + "/internal/test-odm-template.xml"
 
       val proj = Project(
-        ProjectTitle = "Template Test 01 API",
+        ProjectTitle = Some("Template Test 01 API"),
         Purpose = Some(4),
-        ProjectNotes = "20-XXXXXX"
+        ProjectNotes = Some("20-XXXXXX")
       )
       
       createREDCapClientResource[IO].use {
         case apiService =>
 
-          apiService.readAllFromFile(odmFilePath)
+        apiService.readAllFromFile(odmFilePath)
             .flatMap { x =>
-              apiService.importData[Project](Chain(
+              
+              
+              apiService.importData[Project](proj, Chain(
                 ("content" -> "project"), ("odm" -> "")
               )).flatMap {
                 in =>

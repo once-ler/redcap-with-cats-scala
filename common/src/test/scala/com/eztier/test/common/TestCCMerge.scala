@@ -37,8 +37,21 @@ class TestCaseClassMerge extends Specification {
       val update = Foo(Some("Next"), Some(""))
 
       val merged = base merge update
-
+      
       merged mustEqual Foo(Some("Next"), Some(""))
+    }
+
+    "Order should not matter" in {
+      case class Foo(a: Option[String], b: Option[String])
+      val base = Foo(Some("First"), Some("time"))
+      val update = Foo(None, None)
+
+      val merged = base merge update
+      val merged2 = update merge base
+
+      merged mustEqual merged2
+
+      merged mustEqual Foo(Some("First"), Some("time"))
     }
 
   }

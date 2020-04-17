@@ -20,8 +20,7 @@ lazy val commonSettings = Seq(
   resolvers ++= Seq(
     Resolver.sonatypeRepo("public"),
     Resolver.sonatypeRepo("releases"),
-    Resolver.sonatypeRepo("snapshots"),
-    Resolver.bintrayRepo("ovotech", "maven")
+    Resolver.sonatypeRepo("snapshots")
   )
 )
 
@@ -46,12 +45,12 @@ lazy val common = project
       specs2,
       logback,
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      monocleCore,
-      monocleMacro,
-      monocleLaw,
+      shapeless,
+      // monocleCore,
+      // monocleMacro,
+      // monocleLaw,
       log4catsCore,
-      log4catsSlf4j,
-      algae
+      log4catsSlf4j
     )
   )
 
@@ -100,9 +99,9 @@ val DispatchHttpVerison = "0.14.1"
 val ScalaXmlVersion = "1.0.6"
 val ScalaParserVersion = "1.0.6"
 val ScalaTestVersion = "3.2.0-M1"
-val MonocleVersion = "2.0.0"
+// val MonocleVersion = "2.0.0"
 val Log4CatsVersion = "1.0.1"
-val AlgaeVersion = "0.2.5"
+val ShapelessVersion = "2.3.3"
 
 val cats = "org.typelevel" %% "cats-core" % CatsVersion
 val catsMtl = "org.typelevel" %% "cats-mtl-core" % CatsMtlVersion
@@ -120,7 +119,6 @@ val http4sBlazeClient = "org.http4s" %% "http4s-blaze-client" % Http4sVersion
 val http4sCirce = "org.http4s" %% "http4s-circe" % Http4sVersion
 val http4sDsl = "org.http4s" %% "http4s-dsl" % Http4sVersion
 val http4sTesting = "org.http4s" %% "http4s-testing" % Http4sVersion % Test
-
 
 val doobie = "org.tpolecat" %% "doobie-core" % DoobieVersion
 val doobieH2 ="org.tpolecat" %% "doobie-h2" % DoobieVersion
@@ -156,14 +154,14 @@ val scalaParser = "org.scala-lang.modules" %% "scala-parser-combinators" % Scala
 
 val scalaTest = "org.scalatest" %% "scalatest" % ScalaTestVersion % Test
 
-val monocleCore = "com.github.julien-truffaut" %%  "monocle-core"  % MonocleVersion
-val monocleMacro = "com.github.julien-truffaut" %%  "monocle-macro" % MonocleVersion
-val monocleLaw = "com.github.julien-truffaut" %%  "monocle-law"   % MonocleVersion % "test"
+// val monocleCore = "com.github.julien-truffaut" %%  "monocle-core"  % MonocleVersion
+// val monocleMacro = "com.github.julien-truffaut" %%  "monocle-macro" % MonocleVersion
+// val monocleLaw = "com.github.julien-truffaut" %%  "monocle-law"   % MonocleVersion % "test"
 
 val log4catsCore = "io.chrisdavenport" %% "log4cats-core" % Log4CatsVersion
 val log4catsSlf4j = "io.chrisdavenport" %% "log4cats-slf4j" % Log4CatsVersion
 
-val algae = "com.ovoenergy" %% "algae" % AlgaeVersion
+val shapeless = "com.chuusai" %% "shapeless" % ShapelessVersion
 
 // Filter out compiler flags to make the repl experience functional...
 val badConsoleFlags = Seq("-Xfatal-warnings", "-Ywarn-unused:imports")

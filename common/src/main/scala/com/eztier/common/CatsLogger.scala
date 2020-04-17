@@ -1,14 +1,12 @@
 package com.eztier
 package common
 
-import cats.syntax.flatMap._
-import cats.syntax.functor._
-import cats.{Functor, Monad, SemigroupK}
+import cats.implicits._
+import cats.{Functor, Monad}
 import cats.data.Chain
 import cats.effect.Sync
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import io.chrisdavenport.log4cats.SelfAwareStructuredLogger
-import algae.mtl.MonadLog
 
 object CatsLogger {
   implicit def unsafeLogger[F[_]: Sync]: SelfAwareStructuredLogger[F] = Slf4jLogger.getLogger[F]
@@ -18,7 +16,7 @@ object CatsLogger {
       for {
         l0 <- lhs.get
         l1 <- rhs.get
-        k = SemigroupK[Chain].combineK(l0, l1)
+        k = l0 <+> l1
       } yield k
     }
   }

@@ -1,13 +1,13 @@
-package com.eztier.redcap
+package com.eztier
+package redcap
 
+import cats.data.{Chain, Writer}
 import cats.effect.{Async, Blocker, ConcurrentEffect, ContextShift, IO, Resource, Sync, Timer}
 import doobie.util.ExecutionContexts
 import io.circe.config.{parser => ConfigParser}
 import java.util.concurrent.Executors
 
-import algae.createMonadLog
-import algae.mtl.MonadLog
-import cats.data.{Chain, Writer}
+import common.{MonadLog, _}
 
 package object client {
   import domain._
@@ -17,7 +17,7 @@ package object client {
 
   def createREDCapClientResource[F[_]: Async :ContextShift :ConcurrentEffect: Timer] =
     for {
-      implicit0(logs: MonadLog[F, Chain[String]]) <- Resource.liftF(createMonadLog[F, Chain[String]])
+      implicit0(logs: MonadLog[F, Chain[String]]) <- Resource.liftF(MonadLog.createMonadLog[F, String])
       conf <- Resource.liftF(ConfigParser.decodePathF[F, AppConfig]("redcap"))
       _ <- Resource.liftF(DatabaseConfig.initializeDb[F](conf.db.local)) // Lifts an applicative into a resource. Resource[Tuple1, Nothing[Unit]]
       connEc <- ExecutionContexts.fixedThreadPool[F](conf.db.local.connections.poolSize)

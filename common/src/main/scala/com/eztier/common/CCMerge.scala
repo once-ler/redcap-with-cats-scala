@@ -63,4 +63,3 @@ object CCMergeSyntax extends CCMerge0 {
     }
 
 }
-

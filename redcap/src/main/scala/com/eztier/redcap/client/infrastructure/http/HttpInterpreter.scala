@@ -3,13 +3,12 @@ package redcap.client
 package infrastructure
 package http
 
-import algae.mtl.MonadLog
 import cats.syntax.semigroup._
 import cats.data.Chain
 import cats.{Applicative, Functor}
-import cats.effect.{ConcurrentEffect, ContextShift}
+import cats.effect.{ConcurrentEffect, ContextShift, Blocker}
 import fs2.{Pipe, Stream}
-import fs2.text.{utf8DecodeC, utf8Encode}
+import fs2.text.{utf8DecodeC, utf8Decode, utf8Encode}
 import io.circe._
 import io.circe.generic.extras._ // For snakecase member names.
 import io.circe.syntax._
@@ -19,16 +18,15 @@ import java.nio.file.Paths
 import org.http4s.{Charset, EntityBody, Header, Headers, HttpVersion, Method, Request, Uri, UrlForm}
 import org.http4s.client.blaze.BlazeClientBuilder
 
+import common.{MonadLog, _}
 import common.Util._
 import domain._
 import com.eztier.redcap.client.config.HttpConfig
 
-class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]]
-  (conf: HttpConfig) extends WithBlockingEcStream with ApiAlgebra[F] {
+class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
+  (conf: HttpConfig)(implicit logs: MonadLog[F, Chain[String]]) extends WithBlockingEcStream with ApiAlgebra[F] {
 
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
-
-  val logs = implicitly[MonadLog[F, Chain[String]]]
 
   val headers = Headers.of(Header("Accept", "*/*"))
 
@@ -82,19 +80,18 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
         case Left(e) => Left(Chain.one(in))
       })
     }
-
-  def readAllFromFile(path: String): Stream[F, String] = {
-    blockingEcStream.flatMap { ec =>
+  
+  def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
+    Stream.resource(Blocker[F]).flatMap { blocker =>
       for {
-        r <- io.file.readAll[IO](Paths.get(path), blocker, 8192)
-          .through(text.utf8Decode)
+        r <- fs2.io.file.readAll[F](Paths.get(path), blocker, bufferSize)
+          .through(utf8Decode)
       } yield r
     }.handleErrorWith { e =>
       val ex = WrapThrowable(e).printStackTraceAsString
       Stream.eval(logs.log(Chain.one(s"${ex}")))
         .flatMap(a => Stream.emit(ex))
     }
-  }  
 
   private def createRequest(formData: UrlForm) =
     Request[F](
