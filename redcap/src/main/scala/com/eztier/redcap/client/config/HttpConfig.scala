@@ -3,5 +3,6 @@ package config
 
 case class HttpConfig
 (
-  url: String
+  url: String,
+  token: Option[String]
 )

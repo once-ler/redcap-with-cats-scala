@@ -23,7 +23,7 @@ package object client {
       connEc <- ExecutionContexts.fixedThreadPool[F](conf.db.local.connections.poolSize)
       txnEc <- ExecutionContexts.cachedThreadPool[F]
       xa <- DatabaseConfig.dbTransactor[F](conf.db.local, connEc, Blocker.liftExecutionContext(txnEc))
-      apiRepo = HttpInterpreter[F]
+      apiRepo = HttpInterpreter[F](conf.http.local)
       apiService = ApiService(apiRepo)
     } yield apiService
 }

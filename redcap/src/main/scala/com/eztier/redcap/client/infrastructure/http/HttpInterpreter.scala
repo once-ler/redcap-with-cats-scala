@@ -19,9 +19,10 @@ import io.circe.parser._
 import io.circe.optics.JsonPath._
 import common.Util._
 import domain._
+import com.eztier.redcap.client.config.HttpConfig
 
 class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]]
-  extends WithBlockingEcStream with ApiAlgebra[F] {
+  (conf: HttpConfig) extends WithBlockingEcStream with ApiAlgebra[F] {
 
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 
@@ -36,7 +37,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
   val moreHeaders = headers.put(Header("Content-Type", "application/x-www-form-urlencoded"))
 
   def defaultRequestBody: Chain[(String, String)] = Chain(
-    "token" -> "",
+    "token" -> conf.token.getOrElse(""),
     "format" -> "json",
     "type" -> "flat"
   )
@@ -85,7 +86,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
   private def createRequest(formData: UrlForm) =
     Request[F](
       method = Method.POST,
-      uri = Uri.unsafeFromString("https://www.w3schools.com/xml/tempconvert.asmx"),
+      uri = Uri.unsafeFromString(conf.url),
       headers = moreHeaders,
       httpVersion = HttpVersion.`HTTP/1.1`
     ).withEntity(formData)(UrlForm.entityEncoder(Charset.`UTF-8`))
@@ -116,10 +117,12 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
   }
 
   override def createProject[A](data: A, odm: Option[String])(implicit ev: Encoder[A]): Stream[F, ApiResp] = {
-    val formData = UrlForm("data" -> data.asJson.noSpaces) + odm match {
-      case Some(a) => ("odm" -> a)
-      case None => Map.empty
+    val maybeOdm: Chain[(String, String)] = odm match {
+      case Some(a) => Chain.one("odm" -> a)
+      case None => Chain.empty
     }
+    
+    val formData = UrlForm.fromChain(Chain("data" -> data.asJson.noSpaces) |+| maybeOdm)
 
     val request: Request[F] = createRequest(formData)
 
@@ -130,5 +133,5 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: Monad
 }
 
 object HttpInterpreter {
-  def apply[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]]: HttpInterpreter[F] = new HttpInterpreter[F]
+  def apply[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]](conf: HttpConfig): HttpInterpreter[F] = new HttpInterpreter[F](conf)
 }

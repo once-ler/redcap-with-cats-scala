@@ -41,6 +41,20 @@ class TestREDCapClientSpec extends Specification {
 
       1 mustEqual 1
     }
+
+    "Create new project with ODM" in {
+
+      createREDCapClientResource[IO].use {
+        case apiService =>
+
+          val proj = Project(
+            token = Some(""),
+            content = 
+          )
+
+          apiService.createProject[Project]()
+
+    }
   }
 
 }
