@@ -58,8 +58,8 @@ class TestREDCapClientSpec extends Specification {
       createREDCapClientResource[IO].use { case apiService =>
 
         import config._
+        import Project._ // for snakecase implicit names
 
-        val headers = Headers.of(Header("Content-Type", "application/json"))
         val conf = for {
           c <- apiService.showConf
         } yield c
@@ -73,7 +73,7 @@ class TestREDCapClientSpec extends Specification {
           apiService.readAllFromFile(c.odm.getOrElse(""))
             .flatMap { x =>
               apiService
-                .importData[Project](proj, Chain(("content" -> "project"), ("odm" -> x)), headers)
+                .importData[List[Project]](List(proj), Chain(("content" -> "project"), ("odm" -> x)))
                 .flatMap {
                   in =>
                     in match {

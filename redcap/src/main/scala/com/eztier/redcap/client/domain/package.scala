@@ -4,10 +4,10 @@ package redcap.client
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
+import io.circe.generic.extras.Configuration
 import io.circe.{Decoder, Encoder}
-
-import scala.util.Try
-import common.Util._
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 
 package object domain {
   private val defaultDateTimeFormatterString = "yyyy-MM-dd HH:mm:ss"

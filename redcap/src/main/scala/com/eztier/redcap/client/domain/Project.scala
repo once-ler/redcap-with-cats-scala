@@ -2,8 +2,17 @@ package com.eztier
 package redcap.client
 package domain
 
+import io.circe._
+import io.circe.generic.extras._
+import io.circe.syntax._
+import io.circe.parser._
+
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.generic.extras._
 import java.time.Instant
 
+// @ConfiguredJsonCodec
 case class Project
 (
   ProjectId: Option[Long] = None,
@@ -30,3 +39,9 @@ case class Project
   DisplayTodayNowButton: Option[Byte] = None,
   HasRepeatingInstrumentsOrEvents: Option[Byte] = None
 )
+
+object Project {
+  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
+  implicit val snakyEncoder: Encoder[Project] = deriveEncoder
+  implicit val snakyDecoder: Decoder[Project] = deriveDecoder
+}

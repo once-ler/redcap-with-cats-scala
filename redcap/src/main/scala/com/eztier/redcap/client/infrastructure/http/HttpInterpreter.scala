@@ -31,7 +31,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
   (conf: HttpConfig)(implicit logs: MonadLog[F, Chain[String]])
   extends ApiAlgebra[F] {
 
-  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+  // implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 
   private val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(4))
   private val client = BlazeClientBuilder(pool)

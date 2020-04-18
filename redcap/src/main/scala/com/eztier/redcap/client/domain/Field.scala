@@ -1,6 +1,9 @@
 package com.eztier.redcap.client
 package domain
 
+import io.circe.generic.extras._
+
+// @ConfiguredJsonCodec
 case class Field
 (
   BranchingLogic: Option[String] = None, // Any branching logic that REDCap uses to show or hide fields
