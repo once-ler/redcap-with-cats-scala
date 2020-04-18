@@ -58,7 +58,6 @@ class TestREDCapClientSpec extends Specification {
       createREDCapClientResource[IO].use { case apiService =>
 
         import config._
-        import Project._ // for snakecase implicit names
 
         val conf = for {
           c <- apiService.showConf

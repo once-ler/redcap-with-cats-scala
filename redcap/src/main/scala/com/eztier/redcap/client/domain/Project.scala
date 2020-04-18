@@ -2,14 +2,10 @@ package com.eztier
 package redcap.client
 package domain
 
-import io.circe._
-import io.circe.generic.extras._
-import io.circe.syntax._
-import io.circe.parser._
-
-import io.circe.{Decoder, Encoder}
-import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-import io.circe.generic.extras._
+import io.circe.{derivation, Decoder, Encoder}
+// Do not use io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}!
+// {deriveDecoder, deriveEncoder} provided by circe-derivation.
+import io.circe.derivation._
 import java.time.Instant
 
 // @ConfiguredJsonCodec
@@ -41,7 +37,6 @@ case class Project
 )
 
 object Project {
-  implicit val customConfig: Configuration = Configuration.default.withSnakeCaseMemberNames
-  implicit val snakyEncoder: Encoder[Project] = deriveEncoder
-  implicit val snakyDecoder: Decoder[Project] = deriveDecoder
+  implicit val encoder: Encoder[Project] = deriveEncoder(derivation.renaming.snakeCase, None)
+  implicit val decoder: Decoder[Project] = deriveDecoder(derivation.renaming.snakeCase, true, None)
 }

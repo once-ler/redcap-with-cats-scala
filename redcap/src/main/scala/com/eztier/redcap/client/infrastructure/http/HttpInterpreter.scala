@@ -65,7 +65,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   def toApiResponseS: String => Stream[F, ApiResp] =
     in => {
-      val json: Json = parse(in).getOrElse(Json.Null)
+      val json: Json = parse(in).getOrElse(Json.fromString(in))
 
       val _error = root.error.string
 
@@ -79,7 +79,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   def toMaybeTypeS[A](implicit ev: Decoder[A]): String => Stream[F, Either[Chain[String], A]] =
     in => {
-      val json: Json = parse(in).getOrElse(Json.Null)
+      val json: Json = parse(in).getOrElse(Json.fromString(in))
 
       val maybeA = json.as[A]
 
