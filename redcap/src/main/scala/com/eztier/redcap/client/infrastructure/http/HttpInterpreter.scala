@@ -6,7 +6,7 @@ package http
 import cats.syntax.semigroup._
 import cats.data.Chain
 import cats.{Applicative, Functor}
-import cats.effect.{Blocker, ConcurrentEffect, ContextShift}
+import cats.effect.{Blocker, ConcurrentEffect, ContextShift, Sync}
 import cats.implicits._
 import fs2.{Pipe, Stream}
 import fs2.text.{utf8Decode, utf8DecodeC, utf8Encode}
@@ -149,6 +149,14 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
   */
     ???
   }
+
+  override def showLog: F[String] =
+    for {
+      l <- logs.get
+    } yield l.show
+
+  override def showConf: F[HttpConfig] =
+    Sync[F].delay(conf)
 
 }
 

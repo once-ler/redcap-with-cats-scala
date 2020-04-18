@@ -5,9 +5,9 @@ package domain
 import cats.data.Chain
 import cats.{Functor, Monad}
 import fs2.Stream
-import io.circe.{Decoder, Encoder} // For Instant/String contramaps
-
+import io.circe.{Decoder, Encoder}
 import common.MonadLog
+import config.HttpConfig
 
 class ApiService[F[_]: Functor: Monad](repository: ApiAlgebra[F])(implicit ev: MonadLog[F, Chain[String]]) {
   
@@ -24,6 +24,12 @@ class ApiService[F[_]: Functor: Monad](repository: ApiAlgebra[F])(implicit ev: M
 
   def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
     repository.readAllFromFile(path, bufferSize)
+
+  def showLog: F[String] =
+    repository.showLog
+
+  def showConf: F[HttpConfig] =
+    repository.showConf
 }
 
 object ApiService {

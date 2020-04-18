@@ -4,13 +4,13 @@ package test
 
 import cats.implicits._
 import cats.data.Chain
-import cats.effect.IO
-import fs2.{text, Stream}
-import java.nio.file.Paths
-
+import cats.effect.{IO, Sync}
+import fs2.Stream
 import org.specs2.mutable._
-
 import domain._
+import io.circe.Encoder
+import io.circe.syntax._
+// import io.circe.generic.semiauto._
 
 class TestREDCapClientSpec extends Specification {
 
@@ -54,23 +54,32 @@ class TestREDCapClientSpec extends Specification {
         ProjectNotes = Some("20-XXXXXX")
       )
       
-      createREDCapClientResource[IO].use {
-        case apiService =>
+      createREDCapClientResource[IO].use { case apiService =>
+
+        import config._
+
+        val conf = for {
+          c <- apiService.showConf
+        } yield c
 
         apiService.readAllFromFile(odmFilePath)
-            .flatMap { x =>
-              apiService.importData[Project](proj, Chain(
-                ("content" -> "project"), ("odm" -> x)
-              )).flatMap {
-                in =>
-                  in match {
-                    case ApiOk(body) => println(body)
-                    case ApiError(body, error) => println(body, error)
-                  }
+          .flatMap { x =>
+            apiService.importData[Project](proj, Chain(
+              ("content" -> "project"), ("odm" -> x)
+            )).flatMap {
+              in =>
+                in match {
+                  case ApiOk(body) =>
+                    println(body)
+                  case ApiError(body, error) => println(body, error)
+                }
 
-                  Stream.emit(())
-              }
-            }.compile.drain.unsafeRunSync()
+                Stream.eval(apiService.showLog)
+            }.flatMap { l =>
+              println(l)
+              Stream.emit(())
+            }
+          }.compile.drain.unsafeRunSync()
 
           IO.unit
         }.unsafeRunSync()
