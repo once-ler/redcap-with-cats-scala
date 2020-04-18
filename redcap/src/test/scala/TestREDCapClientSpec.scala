@@ -10,6 +10,7 @@ import org.specs2.mutable._
 import domain._
 import io.circe.Encoder
 import io.circe.syntax._
+import org.http4s.{Header, Headers}
 // import io.circe.generic.semiauto._
 
 class TestREDCapClientSpec extends Specification {
@@ -58,10 +59,38 @@ class TestREDCapClientSpec extends Specification {
 
         import config._
 
+        val headers = Headers.of(Header("Content-Type", "application/json"))
         val conf = for {
           c <- apiService.showConf
         } yield c
 
+        val a = Stream.eval(conf)
+
+        a.through(b => b.map { c =>
+
+          println(c.asJson)
+
+          apiService.readAllFromFile(c.odm.getOrElse(""))
+            .flatMap { x =>
+              apiService
+                .importData[Project](proj, Chain(("content" -> "project"), ("odm" -> x)), headers)
+                .flatMap {
+                  in =>
+                    in match {
+                      case ApiOk(body) =>
+                        println(body)
+                      case ApiError(body, error) => println(body, error)
+                    }
+
+                    Stream.eval(apiService.showLog)
+                }.flatMap { l =>
+                  println(l)
+                  Stream.emit(())
+                }
+              }.compile.drain.unsafeRunSync()
+
+        }).compile.drain
+/*
         apiService.readAllFromFile(odmFilePath)
           .flatMap { x =>
             apiService.importData[Project](proj, Chain(
@@ -80,8 +109,8 @@ class TestREDCapClientSpec extends Specification {
               Stream.emit(())
             }
           }.compile.drain.unsafeRunSync()
-
-          IO.unit
+*/
+          // IO.unit
         }.unsafeRunSync()
 
       1 mustEqual 1

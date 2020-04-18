@@ -18,7 +18,7 @@ import io.circe.optics.JsonPath._
 import java.nio.file.Paths
 import java.util.concurrent.Executors
 
-import org.http4s.{Charset, EntityBody, Header, Headers, HttpVersion, Method, Request, Uri, UrlForm}
+import org.http4s._
 import org.http4s.client.blaze.BlazeClientBuilder
 import common.{MonadLog, _}
 import common.Util._
@@ -43,7 +43,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   def strBody(body: String): EntityBody[F] = fs2.Stream(body).through(utf8Encode)
 
-  val moreHeaders = headers.put(Header("Content-Type", "application/x-www-form-urlencoded"))
+  // val moreHeaders = headers.put(Header("Content-Type", "application/x-www-form-urlencoded"))
 
   def defaultRequestBody: Chain[(String, String)] = Chain(
     "token" -> conf.token.getOrElse(""),
@@ -91,6 +91,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
     for {
+
       str <- fs2.io.file.readAll[F](Paths.get(path), blocker, bufferSize)
         .through(utf8Decode)
         .handleErrorWith { e =>
@@ -100,15 +101,18 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
         }
     } yield str
 
-  private def createRequest(formData: UrlForm) =
+  private def createRequest(formData: UrlForm, inHeaders: Headers = Headers.empty) =
     Request[F](
       method = Method.POST,
       uri = Uri.unsafeFromString(conf.url),
-      headers = moreHeaders,
+      headers = headers ++ inHeaders ++ (inHeaders.exists(_.name == "Content-Type") match {
+        case true => Headers.empty
+        case _ => Headers.of(Header("Content-Type", "application/x-www-form-urlencoded"))
+      }),
       httpVersion = HttpVersion.`HTTP/1.1`
     ).withEntity(formData)(UrlForm.entityEncoder(Charset.`UTF-8`))
 
-  override def importData[A](data: A, options: Chain[(String, String)])(implicit ev: Encoder[A]): Stream[F, ApiResp] = {
+  override def importData[A](data: A, options: Chain[(String, String)], headers: Headers = Headers.empty)(implicit ev: Encoder[A]): Stream[F, ApiResp] = {
 
     val j: Json = data.asJson
 
@@ -116,7 +120,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
     // val a: Entity[F] = UrlForm.entityEncoder(charset).toEntity(formData)
 
-    val request: Request[F] = createRequest(formData)
+    val request: Request[F] = createRequest(formData, headers)
 
     clientBodyStream(request)
       .flatMap(toApiResponseS)
