@@ -20,6 +20,7 @@ case class DatabaseConfig(
   driver: String,
   user: String,
   password: String,
+  locations: Option[String] = None,
   connections: DatabaseConnectionsConfig
 )
 
@@ -39,6 +40,7 @@ object DatabaseConfig {
         val fw: Flyway = {
           Flyway
             .configure()
+            .locations(cfg.locations.getOrElse(""))
             .dataSource(cfg.url, cfg.user, cfg.password)
             .load()
         }
