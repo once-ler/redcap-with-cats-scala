@@ -14,6 +14,7 @@ package object client {
   import config._
   // import infrastructure.doobie._
   import infrastructure.http._
+  import infrastructure.doobie.interpreters._
 
   def createREDCapClientResource[F[_]: Async :ContextShift :ConcurrentEffect: Timer] =
     for {
@@ -23,7 +24,9 @@ package object client {
       connEc <- ExecutionContexts.fixedThreadPool[F](conf.db.local.connections.poolSize)
       txnEc <- ExecutionContexts.cachedThreadPool[F]
       xa <- DatabaseConfig.dbTransactor[F](conf.db.local, connEc, Blocker.liftExecutionContext(txnEc))
+      tokenRepo = DoobieProjectTokenRepositoryInterpreter[F](xa)
+      tokenService = ProjectTokenService(tokenRepo)
       apiRepo = HttpInterpreter[F](conf.http.local)
       apiService = ApiService(apiRepo)
-    } yield apiService
+    } yield (apiService, tokenService)
 }

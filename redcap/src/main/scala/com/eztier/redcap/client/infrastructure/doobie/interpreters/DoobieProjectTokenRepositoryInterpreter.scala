@@ -18,6 +18,9 @@ import Util._
 import CatsLogger._
 
 private object ProjectTokenSQL {
+  /* We require conversion for date time */
+  implicit val DateTimeMeta: Meta[Instant] =
+    Meta[java.sql.Timestamp].imap(_.toInstant)(java.sql.Timestamp.from)
 
   def listSql: Query0[ProjectToken] = sql"""
     SELECT id, project_id, token, ts
@@ -34,6 +37,9 @@ private object ProjectTokenSQL {
       .updateMany(a)
   }
 
+  def findByIdSql(a: Option[String]): Query0[ProjectToken] =
+    sql"id, project_id, token, ts from redcap.project_token where project_id = ${a.getOrElse("")}".query
+
 }
 
 class DoobieProjectTokenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](val xa: Transactor[F])
@@ -43,6 +49,14 @@ class DoobieProjectTokenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](va
   override def insertMany(a: List[ProjectToken]): F[Int] = insertManySql(a).transact(xa)
 
   override def list(): F[List[ProjectToken]] = listSql.to[List].transact(xa)
+
+  override def findById(id: Option[String]): OptionT[F, Option[ProjectToken]] = {
+    val fa = findByIdSql(id)
+      .option
+      .transact(xa)
+
+    OptionT.liftF(fa)
+  }
 }
 
 object DoobieProjectTokenRepositoryInterpreter {

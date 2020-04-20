@@ -55,9 +55,11 @@ class TestREDCapClientSpec extends Specification {
         ProjectNotes = Some("20-XXXXXX")
       )
       
-      createREDCapClientResource[IO].use { case apiService =>
+      createREDCapClientResource[IO].use { case (apiService, tokenService) =>
 
         import config._
+
+        // TODO: confirm whether we have the token for the project.
 
         val conf = for {
           c <- apiService.showConf
