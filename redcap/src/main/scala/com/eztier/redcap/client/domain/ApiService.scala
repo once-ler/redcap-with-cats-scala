@@ -21,8 +21,8 @@ class ApiService[F[_]: Functor: Monad](repository: ApiAlgebra[F])(implicit ev: M
   def exportData[A](options: Chain[(String, String)])(implicit ev: Decoder[A]): Stream[F, Either[Chain[String], A]] =
     repository.exportData(options)
 
-  def createProject[A](data: A, odm: Option[String] = None)(implicit ev: Encoder[A]): Stream[F, ApiResp] =
-    repository.createProject[A](data, odm)
+  def createProject(data: Project, projectId: Option[String])(implicit ev: Encoder[Project]): Stream[F, Option[String]] =
+    repository.createProject(data, projectId)
 
   def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
     repository.readAllFromFile(path, bufferSize)

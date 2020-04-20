@@ -25,7 +25,7 @@ class TestREDCapClientSpec extends Specification {
     "Create usable client" in {
 
       createREDCapClientResource[IO].use {
-        case apiService =>
+        case (apiService, tokenService) =>
 
           apiService.exportData[Metadata](Chain(("content" -> "metadata")))
               .flatMap {
@@ -49,64 +49,33 @@ class TestREDCapClientSpec extends Specification {
 
       val odmFilePath = System.getProperty("user.dir") + "/internal/test-odm-template.xml"
 
-      val projectId = "20-XXXXXX"
+      val projectId = "20-XXXXXX".some
       val proj = Project(
         ProjectTitle = Some("Template Test 01 API"),
         Purpose = Some(4),
-        ProjectNotes = Some(projectId)
+        ProjectNotes = projectId
       )
       
       createREDCapClientResource[IO].use { case (apiService, tokenService) =>
 
         import config._
 
-        // TODO: confirm whether we have the token for the project.
-        val maybeToken = for {
-          r <- tokenService
-          .findById(projectId.some)
-          .fold(_ => None, a => a)
-        } yield r
-
-        maybeToken.map { tk =>
-          tk match {
+        val prog = for {
+          tk <- tokenService
+            .findById(projectId)
+            .fold(_ => None, a => a)
+          token = tk match {
             case Some(_) => tk
             case None =>
+              val newTk = apiService.createProject(proj, projectId).compile.toList.unsafeRunSync()
           }
-        }.unsafeRunSync()
+        } yield token
 
-        val conf = for {
-          c <- apiService.showConf
-        } yield c
+        prog.unsafeRunSync()
 
-        val a = Stream.eval(conf)
+        IO.unit
 
-        a.through(b => b.map { c =>
-          // println(c.asJson)
-          apiService.readAllFromFile(c.odm.getOrElse(""))
-            .flatMap { x =>
-              apiService
-                .importData[List[Project]](List(proj), Chain(("content" -> "project"), ("odm" -> x)))
-                .flatMap {
-                  in =>
-                    val newToken = in match {
-                      case ApiOk(body) => println(body)
-                        body.toString.some
-                      case ApiError(body, error) => println(body, error)
-                        None
-                    }
-
-                    Stream.eval(apiService.showLog)
-                      .flatMap{ l =>
-                        println(l)
-                        Stream.emit(())}
-                      .flatMap(_ => Stream.emit(newToken))
-                }
-              }.compile.drain.unsafeRunSync()
-          }).compile.drain.unsafeRunSync()
-
-          IO.unit
-
-        }.unsafeRunSync()
+      }.unsafeRunSync()
 
       1 mustEqual 1
     }

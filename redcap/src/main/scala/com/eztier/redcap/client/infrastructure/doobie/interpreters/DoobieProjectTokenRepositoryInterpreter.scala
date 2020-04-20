@@ -27,18 +27,18 @@ private object ProjectTokenSQL {
     FROM redcap.project_token
   """.query
 
-  def insertManySql(a: List[ProjectToken]): ConnectionIO[Int] = {
+  def insertManySql(a: List[(Option[String], Option[String])]): ConnectionIO[Int] = {
     val stmt = """
       insert into redcap.project_token (project_id, token)
       values (?, ?)
     """
 
-    Update[ProjectToken](stmt)
+    Update[(Option[String], Option[String])](stmt)
       .updateMany(a)
   }
 
   def findByIdSql(a: Option[String]): Query0[ProjectToken] =
-    sql"id, project_id, token, ts from redcap.project_token where project_id = ${a.getOrElse("")}".query
+    sql"select id, project_id, token, ts from redcap.project_token where project_id = ${a.getOrElse("")}".query
 
 }
 
@@ -46,7 +46,7 @@ class DoobieProjectTokenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](va
   extends ProjectTokenAlgebra[F] {
   import ProjectTokenSQL._
 
-  override def insertMany(a: List[ProjectToken]): F[Int] = insertManySql(a).transact(xa)
+  override def insertMany(a: List[ProjectToken]): F[Int] = insertManySql(a.map(a => (a.project_id, a.token))).transact(xa)
 
   override def list(): F[List[ProjectToken]] = listSql.to[List].transact(xa)
 

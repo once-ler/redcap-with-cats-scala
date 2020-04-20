@@ -28,10 +28,8 @@ import com.eztier.redcap.client.config.HttpConfig
 import scala.concurrent.ExecutionContext
 
 class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
-  (conf: HttpConfig)(implicit logs: MonadLog[F, Chain[String]])
+  (conf: HttpConfig, tokenService: ProjectTokenService[F])(implicit logs: MonadLog[F, Chain[String]])
   extends ApiAlgebra[F] {
-
-  // implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 
   private val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(4))
   private val client = BlazeClientBuilder(pool)
@@ -91,8 +89,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
     for {
-
-      str <- fs2.io.file.readAll[F](Paths.get(path), blocker, bufferSize)
+      str <- fs2.io.file.readAll(Paths.get(path), blocker, bufferSize)
         .through(utf8Decode)
         .handleErrorWith { e =>
           val ex = WrapThrowable(e).printStackTraceAsString
@@ -137,21 +134,42 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   }
 
-  override def createProject[A](data: A, odm: Option[String])(implicit ev: Encoder[A]): Stream[F, ApiResp] = {
-    /*
-    val maybeOdm: Chain[(String, String)] = odm match {
-      case Some(a) => Chain.one("odm" -> a)
-      case None => Chain.empty
+  private def toImportProjectPipeS(data: Project): Pipe[F, String, ApiResp] = // Stream[F, String] => Stream[F, ApiResp] =
+    s =>
+      for {
+        y <- s.flatMap {
+          x =>
+            importData[List[Project]] (List(data), Chain(("content" -> "project"), ("odm" -> x)))
+        }
+      } yield y
+
+  private def toPersistProjectToken(projectId: Option[String]): Pipe[F, Option[String], Option[String]] =
+    _.evalMap { newTk =>
+      tokenService.insertMany(List(ProjectToken(
+        project_id = projectId,
+        token = newTk
+      ))).map(_ => newTk)
     }
-    
-    val formData = UrlForm.fromChain(Chain("data" -> data.asJson.noSpaces) |+| maybeOdm)
 
-    val request: Request[F] = createRequest(formData)
+  override def createProject(data: Project, projectId: Option[String])(implicit ev: Encoder[Project]): Stream[F, Option[String]] = {
+    val a = readAllFromFile(conf.odm.getOrElse(""))
 
-    clientBodyStream(request)
-      .flatMap(toApiResponseS)
-  */
-    ???
+    a
+      .through(toImportProjectPipeS(data))
+      .flatMap { in =>
+        // TODO: logging
+        Stream.emit(in)
+      }
+      .flatMap { in =>
+        val newTk = in match {
+          case ApiOk(body) => println(body)
+            body.toString.some
+          case ApiError(body, error) => println(body, error)
+            None
+        }
+        Stream.emit(newTk)
+      }
+      .through(toPersistProjectToken(projectId))
   }
 
   override def showLog: F[String] =
@@ -165,5 +183,6 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 }
 
 object HttpInterpreter {
-  def apply[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]](conf: HttpConfig): HttpInterpreter[F] = new HttpInterpreter[F](conf)
+  def apply[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]](conf: HttpConfig, tokenService: ProjectTokenService[F]): HttpInterpreter[F] =
+    new HttpInterpreter[F](conf, tokenService)
 }
