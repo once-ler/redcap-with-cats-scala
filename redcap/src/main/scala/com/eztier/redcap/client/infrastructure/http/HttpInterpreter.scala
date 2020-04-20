@@ -152,9 +152,14 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
     }
 
   override def createProject(data: Project, projectId: Option[String])(implicit ev: Encoder[Project]): Stream[F, Option[String]] = {
-    val a = readAllFromFile(conf.odm.getOrElse(""))
 
-    a
+    val a = Stream.eval(tokenService
+      .findById(projectId)
+      .fold(_ => None, a => a))
+
+/*
+    val b = readAllFromFile(conf.odm.getOrElse(""))
+    b
       .through(toImportProjectPipeS(data))
       .flatMap { in =>
         // TODO: logging
@@ -170,6 +175,9 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
         Stream.emit(newTk)
       }
       .through(toPersistProjectToken(projectId))
+*/
+
+
   }
 
   override def showLog: F[String] =

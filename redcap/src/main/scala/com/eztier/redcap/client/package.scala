@@ -28,5 +28,5 @@ package object client {
       tokenService = ProjectTokenService(tokenRepo)
       apiRepo = HttpInterpreter[F](conf.http.local, tokenService)
       apiService = ApiService(apiRepo)
-    } yield (apiService, tokenService)
+    } yield apiService
 }

@@ -25,7 +25,7 @@ class TestREDCapClientSpec extends Specification {
     "Create usable client" in {
 
       createREDCapClientResource[IO].use {
-        case (apiService, tokenService) =>
+        case apiService =>
 
           apiService.exportData[Metadata](Chain(("content" -> "metadata")))
               .flatMap {
@@ -51,12 +51,12 @@ class TestREDCapClientSpec extends Specification {
 
       val projectId = "20-XXXXXX".some
       val proj = Project(
-        ProjectTitle = Some("Template Test 01 API"),
+        ProjectTitle = projectId,
         Purpose = Some(4),
         ProjectNotes = projectId
       )
       
-      createREDCapClientResource[IO].use { case (apiService, tokenService) =>
+      createREDCapClientResource[IO].use { case apiService =>
 
         import config._
 
