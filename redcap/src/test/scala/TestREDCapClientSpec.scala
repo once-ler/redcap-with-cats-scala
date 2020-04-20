@@ -49,10 +49,11 @@ class TestREDCapClientSpec extends Specification {
 
       val odmFilePath = System.getProperty("user.dir") + "/internal/test-odm-template.xml"
 
+      val projectId = "20-XXXXXX"
       val proj = Project(
         ProjectTitle = Some("Template Test 01 API"),
         Purpose = Some(4),
-        ProjectNotes = Some("20-XXXXXX")
+        ProjectNotes = Some(projectId)
       )
       
       createREDCapClientResource[IO].use { case (apiService, tokenService) =>
@@ -60,6 +61,18 @@ class TestREDCapClientSpec extends Specification {
         import config._
 
         // TODO: confirm whether we have the token for the project.
+        val maybeToken = for {
+          r <- tokenService
+          .findById(projectId.some)
+          .fold(_ => None, a => a)
+        } yield r
+
+        maybeToken.map { tk =>
+          tk match {
+            case Some(_) => tk
+            case None =>
+          }
+        }.unsafeRunSync()
 
         val conf = for {
           c <- apiService.showConf
@@ -68,50 +81,31 @@ class TestREDCapClientSpec extends Specification {
         val a = Stream.eval(conf)
 
         a.through(b => b.map { c =>
-
-          println(c.asJson)
-
+          // println(c.asJson)
           apiService.readAllFromFile(c.odm.getOrElse(""))
             .flatMap { x =>
               apiService
                 .importData[List[Project]](List(proj), Chain(("content" -> "project"), ("odm" -> x)))
                 .flatMap {
                   in =>
-                    in match {
-                      case ApiOk(body) =>
-                        println(body)
+                    val newToken = in match {
+                      case ApiOk(body) => println(body)
+                        body.toString.some
                       case ApiError(body, error) => println(body, error)
+                        None
                     }
 
                     Stream.eval(apiService.showLog)
-                }.flatMap { l =>
-                  println(l)
-                  Stream.emit(())
+                      .flatMap{ l =>
+                        println(l)
+                        Stream.emit(())}
+                      .flatMap(_ => Stream.emit(newToken))
                 }
               }.compile.drain.unsafeRunSync()
+          }).compile.drain.unsafeRunSync()
 
-        }).compile.drain
-/*
-        apiService.readAllFromFile(odmFilePath)
-          .flatMap { x =>
-            apiService.importData[Project](proj, Chain(
-              ("content" -> "project"), ("odm" -> x)
-            )).flatMap {
-              in =>
-                in match {
-                  case ApiOk(body) =>
-                    println(body)
-                  case ApiError(body, error) => println(body, error)
-                }
+          IO.unit
 
-                Stream.eval(apiService.showLog)
-            }.flatMap { l =>
-              println(l)
-              Stream.emit(())
-            }
-          }.compile.drain.unsafeRunSync()
-*/
-          // IO.unit
         }.unsafeRunSync()
 
       1 mustEqual 1
