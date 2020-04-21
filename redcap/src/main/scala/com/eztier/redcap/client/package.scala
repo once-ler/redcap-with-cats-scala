@@ -26,7 +26,8 @@ package object client {
       xa <- DatabaseConfig.dbTransactor[F](conf.db.local, connEc, Blocker.liftExecutionContext(txnEc))
       tokenRepo = DoobieProjectTokenRepositoryInterpreter[F](xa)
       tokenService = ProjectTokenService(tokenRepo)
-      apiRepo = HttpInterpreter[F](conf.http.local, tokenService)
+      apiRepo = HttpInterpreter[F](conf.http.local)
       apiService = ApiService(apiRepo)
-    } yield apiService
+      apiAggregator = ApiAggregator(apiService, tokenService)
+    } yield apiAggregator
 }

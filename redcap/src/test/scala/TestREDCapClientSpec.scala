@@ -25,7 +25,9 @@ class TestREDCapClientSpec extends Specification {
     "Create usable client" in {
 
       createREDCapClientResource[IO].use {
-        case apiService =>
+        case apiAggregator =>
+
+          val apiService = apiAggregator.apiService
 
           apiService.exportData[Metadata](Chain(("content" -> "metadata")))
               .flatMap {
@@ -56,22 +58,11 @@ class TestREDCapClientSpec extends Specification {
         ProjectNotes = projectId
       )
       
-      createREDCapClientResource[IO].use { case apiService =>
+      createREDCapClientResource[IO].use { case apiAggregator =>
 
         import config._
-
-        val prog = for {
-          tk <- tokenService
-            .findById(projectId)
-            .fold(_ => None, a => a)
-          token = tk match {
-            case Some(_) => tk
-            case None =>
-              val newTk = apiService.createProject(proj, projectId).compile.toList.unsafeRunSync()
-          }
-        } yield token
-
-        prog.unsafeRunSync()
+        val prog = apiAggregator.createProject(proj, projectId)
+        prog.compile.toList.unsafeRunSync()
 
         IO.unit
 

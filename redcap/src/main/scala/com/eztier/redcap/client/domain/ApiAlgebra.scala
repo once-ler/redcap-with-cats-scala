@@ -11,7 +11,6 @@ import config.HttpConfig
 trait ApiAlgebra[F[_]] {
   def importData[A](data: A, options: Chain[(String, String)], headers: Headers = Headers.empty)(implicit ev: Encoder[A]): Stream[F, ApiResp]
   def exportData[A](options: Chain[(String, String)])(implicit ev: Decoder[A]): Stream[F, Either[Chain[String], A]]
-  def createProject(data: Project, projectId: Option[String])(implicit ev: Encoder[Project]): Stream[F, Option[String]]
   def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String]
   def showLog: F[String]
   def showConf: F[HttpConfig]

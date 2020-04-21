@@ -28,7 +28,7 @@ import com.eztier.redcap.client.config.HttpConfig
 import scala.concurrent.ExecutionContext
 
 class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
-  (conf: HttpConfig, tokenService: ProjectTokenService[F])(implicit logs: MonadLog[F, Chain[String]])
+  (conf: HttpConfig)(implicit logs: MonadLog[F, Chain[String]])
   extends ApiAlgebra[F] {
 
   private val pool = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(4))
@@ -134,52 +134,6 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   }
 
-  private def toImportProjectPipeS(data: Project): Pipe[F, String, ApiResp] = // Stream[F, String] => Stream[F, ApiResp] =
-    s =>
-      for {
-        y <- s.flatMap {
-          x =>
-            importData[List[Project]] (List(data), Chain(("content" -> "project"), ("odm" -> x)))
-        }
-      } yield y
-
-  private def toPersistProjectToken(projectId: Option[String]): Pipe[F, Option[String], Option[String]] =
-    _.evalMap { newTk =>
-      tokenService.insertMany(List(ProjectToken(
-        project_id = projectId,
-        token = newTk
-      ))).map(_ => newTk)
-    }
-
-  override def createProject(data: Project, projectId: Option[String])(implicit ev: Encoder[Project]): Stream[F, Option[String]] = {
-
-    val a = Stream.eval(tokenService
-      .findById(projectId)
-      .fold(_ => None, a => a))
-
-/*
-    val b = readAllFromFile(conf.odm.getOrElse(""))
-    b
-      .through(toImportProjectPipeS(data))
-      .flatMap { in =>
-        // TODO: logging
-        Stream.emit(in)
-      }
-      .flatMap { in =>
-        val newTk = in match {
-          case ApiOk(body) => println(body)
-            body.toString.some
-          case ApiError(body, error) => println(body, error)
-            None
-        }
-        Stream.emit(newTk)
-      }
-      .through(toPersistProjectToken(projectId))
-*/
-
-
-  }
-
   override def showLog: F[String] =
     for {
       l <- logs.get
@@ -191,6 +145,6 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 }
 
 object HttpInterpreter {
-  def apply[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]](conf: HttpConfig, tokenService: ProjectTokenService[F]): HttpInterpreter[F] =
-    new HttpInterpreter[F](conf, tokenService)
+  def apply[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]: MonadLog[?[_], Chain[String]]](conf: HttpConfig): HttpInterpreter[F] =
+    new HttpInterpreter[F](conf)
 }
