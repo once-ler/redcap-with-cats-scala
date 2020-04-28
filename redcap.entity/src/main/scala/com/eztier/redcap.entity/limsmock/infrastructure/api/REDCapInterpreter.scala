@@ -22,7 +22,7 @@ class REDCapInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
   private def tryExport[A](in: A, options: Chain[(String, String)]): Pipe[F, Option[String], ApiResp] =
     _.flatMap { a =>
       val nextOptions = options ++ Chain("token" -> a.getOrElse(""))
-      
+
       apiAggregator.apiService.exportData[A](nextOptions)
         .flatMap { r =>
           r match {
