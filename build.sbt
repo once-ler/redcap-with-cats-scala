@@ -77,6 +77,19 @@ lazy val redcap = project.
   common
 )
 
+lazy val redcapEntity =  (project in file("redcap.entity")).
+  settings(
+    name := "redcap.entity",
+    settings,
+    assemblySettings,
+    libraryDependencies ++= Seq(
+      specs2      
+    )
+  ).dependsOn(
+  common,
+  redcap
+)
+
 val Http4sVersion = "0.21.0-M5"
 val CirceVersion = "0.12.1"
 val CirceGenericExVersion = "0.12.2"
