@@ -3,6 +3,9 @@ package types
 
 import java.time.Instant
 
+import io.circe.derivation.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder, derivation}
+
 case class RcSpecimen
 (
   RedcapRepeatInstrument: Option[String] = Some("research_specimens"),
@@ -18,5 +21,11 @@ case class RcSpecimen
   SpecUnit: Option[String] = None,
   SpecContainerType: Option[String] = None,
   SpecStorageStatus: Option[String] = None,
-  SpecLocation: Option[String] = None
+  SpecLocation: Option[String] = None,
+  SpecModifyDate: Option[Instant] = None
 )
+
+object RcSpecimen {
+  implicit val encoder: Encoder[RcSpecimen] = deriveEncoder(derivation.renaming.snakeCase, None)
+  implicit val decoder: Decoder[RcSpecimen] = deriveDecoder(derivation.renaming.snakeCase, true, None)
+}

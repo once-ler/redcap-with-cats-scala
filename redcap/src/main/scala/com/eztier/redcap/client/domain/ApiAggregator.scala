@@ -17,7 +17,7 @@ class ApiAggregator[F[_]: Functor](
       for {
         y <- s.flatMap {
           x =>
-            apiService.importData[List[Project]] (List(data), Chain(("content" -> "project"), ("odm" -> x)))
+            apiService.importData[List[Project]] (List(data), Chain("content" -> "project", "odm" -> x))
         }
       } yield y
 
@@ -43,7 +43,8 @@ class ApiAggregator[F[_]: Functor](
           .flatMap { in =>
             val newTk = in match {
               case ApiOk(body) => println(body)
-                body.toString.some
+                // Response body is a string, without braces.
+                body.toString.replaceAllLiterally("\"", "").some
               case ApiError(body, error) => println(body, error)
                 None
             }

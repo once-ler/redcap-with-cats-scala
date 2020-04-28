@@ -3,7 +3,6 @@ package redcap.client
 package infrastructure
 package http
 
-import cats.syntax.semigroup._
 import cats.data.Chain
 import cats.{Applicative, Functor}
 import cats.effect.{Blocker, ConcurrentEffect, ContextShift, Sync}
@@ -11,7 +10,7 @@ import cats.implicits._
 import fs2.{Pipe, Stream}
 import fs2.text.{utf8Decode, utf8DecodeC, utf8Encode}
 import io.circe._
-import io.circe.generic.extras._
+// import io.circe.generic.extras._
 import io.circe.syntax._
 import io.circe.parser._
 import io.circe.optics.JsonPath._
@@ -43,7 +42,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
   // val moreHeaders = headers.put(Header("Content-Type", "application/x-www-form-urlencoded"))
 
-  def defaultRequestBody: Chain[(String, String)] = Chain(
+  private def defaultRequestBody: Chain[(String, String)] = Chain(
     "token" -> conf.token.getOrElse(""),
     "format" -> "json",
     "type" -> "flat"
@@ -83,7 +82,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
       Stream.emit(maybeA match {
         case Right(a) => Right(a)
-        case Left(e) => Left(Chain.one(in))
+        case Left(e) => Left(Chain.one(s"${e.message}: ${in}"))
       })
     }
 
@@ -124,14 +123,15 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
   }
 
   override def exportData[A](options: Chain[(String, String)])(implicit ev: Decoder[A]): Stream[F, Either[Chain[String], A]] = {
-    // ("content" -> "record")
+    // val m = mergeOptions(defaultRequestBody, options)
+    // val formData = UrlForm.fromChain(m)
+
     val formData = UrlForm.fromChain(defaultRequestBody <+> options)
 
     val request: Request[F] = createRequest(formData)
 
     clientBodyStream(request)
       .flatMap(toMaybeTypeS)
-
   }
 
   override def showLog: F[String] =

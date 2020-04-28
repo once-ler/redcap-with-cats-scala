@@ -1,6 +1,8 @@
 package com.eztier.redcap.client
 package domain
 
+import io.circe.derivation.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder, derivation}
 import io.circe.generic.extras._
 
 // @ConfiguredJsonCodec
@@ -23,3 +25,8 @@ case class Field
   TextValidationMax: Option[String] = None, // Maximum value for validation
   TextValidationTypeOrShowSliderNumber: Option[String] = None // Validation type  
 )
+
+object Field {
+  implicit val encoder: Encoder[Field] = deriveEncoder(derivation.renaming.snakeCase, None)
+  implicit val decoder: Decoder[Field] = deriveDecoder(derivation.renaming.snakeCase, true, None)
+}
