@@ -2,7 +2,7 @@ package com.eztier
 package redcap.client
 package test
 
-import java.time.Instant
+import java.time.{Instant, LocalDate}
 
 import cats.implicits._
 import cats.data.Chain
@@ -55,7 +55,7 @@ object TestFixtures {
     RedcapRepeatInstrument: Option[String] = Some("research_specimens"),
     RecordId: Option[String] = None,
     RedcapRepeatInstance: Option[Int] = None,
-    SpecDate: Option[Instant] = None,
+    SpecDate: Option[LocalDate] = None,
     SpecLvParticipantId: Option[String] = None,
     SpecEvent: Option[String] = None,
     SpecSpr: Option[String] = None,
@@ -163,17 +163,35 @@ class TestREDCapClientSpec extends Specification {
                   in =>
                     in match {
                       case Right(m) =>
-                        println(m)
+                        // println(m)
 
                         val inst = com.eztier.common.Util.stringToInstant("2020-04-28 15:30:34", Some("yyyy-MM-dd HH:mm:ss"))
                         val sec0 = inst.getEpochSecond
 
-                        val sec1 = m.map(a => a.SpecModifyDate.getOrElse(Instant.now).getEpochSecond).sorted.reverse.headOption.getOrElse(0L)
+                        val sec1 = m.map(a => a.SpecModifyDate.getOrElse(Instant.now).getEpochSecond).sorted
+                          .zipWithIndex
+                          .reverse.headOption.getOrElse((0L, 0))
 
                         sec0 mustEqual 1588102234
-                        sec0 shouldEqual sec1
+                        // sec0 shouldEqual sec1._2
+
+                        // Try import.
+                        val now = Instant.now()
+                        val spec0 = RcSpecimen(
+                          RecordId = "ABCDEFG".some,
+                          RedcapRepeatInstance = (sec1._2 + 1).some,
+                          SpecDate = now.some,
+                          SpecModifyDate = now.some
+                        )
+
+                        val n = apiAggregator.apiService.importData[List[RcSpecimen]] (List(spec0), Chain("content" -> "record") ++ Chain("token" -> token.getOrElse("")))
+                          .compile.toList.unsafeRunSync()
+
+                        println(n)
+
                       case Left(e) =>
                         println(e.show)
+
                     }
                     Stream.emit(())
                 }
