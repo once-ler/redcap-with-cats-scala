@@ -1,17 +1,16 @@
 package com.eztier.redcap.entity.limsmock.domain
 package types
 
-import java.time.Instant
-
 import io.circe.derivation.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, Encoder, derivation}
+import java.time.{Instant, LocalDate}
 
 case class RcSpecimen
 (
   RedcapRepeatInstrument: Option[String] = Some("research_specimens"),
   RecordId: Option[String] = None,
   RedcapRepeatInstance: Option[Int] = None,
-  SpecDate: Option[Instant] = None,
+  SpecDate: Option[LocalDate] = None,
   SpecLvParticipantId: Option[String] = None,
   SpecEvent: Option[String] = None,
   SpecSpr: Option[String] = None,

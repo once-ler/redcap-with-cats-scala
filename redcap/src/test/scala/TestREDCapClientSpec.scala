@@ -7,7 +7,7 @@ import java.time.{Instant, LocalDate}
 import cats.implicits._
 import cats.data.Chain
 import cats.effect.{IO, Sync}
-import fs2.Stream
+import fs2.{Pipe, Stream}
 import io.circe.derivation.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, Encoder, Json, derivation}
 import io.circe.syntax._
@@ -153,49 +153,48 @@ class TestREDCapClientSpec extends Specification {
     }
 
     "Find repeat instruments with a known key" in {
+      // def handleCreateProject[F[_]](apiAggregator: ApiAggregator[F]): Option[String] => Stream[F, (Option[String], Either[Chain[String], List[RcSpecimen]])] =
+      def handleCreateProject[F[_]](apiAggregator: ApiAggregator[F]): Option[String] => Stream[F, ApiResp] =
+        token =>
+          apiAggregator.apiService.exportData[List[RcSpecimen]](record("research_specimens") ++ Chain("token" -> token.getOrElse("")))
+            .flatMap(handleExportResponse(token, apiAggregator))
+
+      def handleExportResponse[F[_]](token: Option[String], apiAggregator: ApiAggregator[F]): Either[Chain[String], List[RcSpecimen]] => Stream[F, ApiResp] =
+        in => in match {
+          case Right(m) =>
+
+            val inst = com.eztier.common.Util.stringToInstant("2020-04-28 15:30:34", Some("yyyy-MM-dd HH:mm:ss"))
+            val sec0 = inst.getEpochSecond
+
+            val sec1 = m.map(a => a.SpecModifyDate.getOrElse(Instant.now).getEpochSecond).sorted
+              .zipWithIndex
+              .reverse.headOption.getOrElse((0L, 0))
+
+            sec0 mustEqual 1588102234
+            // sec0 shouldEqual sec1._2
+
+            // Try import.
+            val spec0 = RcSpecimen(
+              RecordId = "ABCDEFG".some,
+              RedcapRepeatInstance = (sec1._2 + 2).some,
+              SpecDate = LocalDate.parse("2020-02-03").some,
+              SpecModifyDate = Instant.now.some
+            )
+
+            apiAggregator.apiService.importData[List[RcSpecimen]] (List(spec0), Chain("content" -> "record") ++ Chain("token" -> token.getOrElse("")))
+
+          case Left(e) =>
+            println(e.show)
+            Stream.emit(ApiError(Json.Null, e.show)).covary[F]
+        }
+
       createREDCapClientResource[IO].use {
         case apiAggregator =>
 
           apiAggregator.createProject(proj, projectId)
-            .flatMap { token =>
-              apiAggregator.apiService.exportData[List[RcSpecimen]](record("research_specimens") ++ Chain("token" -> token.getOrElse("")))
-                .flatMap {
-                  in =>
-                    in match {
-                      case Right(m) =>
-                        // println(m)
-
-                        val inst = com.eztier.common.Util.stringToInstant("2020-04-28 15:30:34", Some("yyyy-MM-dd HH:mm:ss"))
-                        val sec0 = inst.getEpochSecond
-
-                        val sec1 = m.map(a => a.SpecModifyDate.getOrElse(Instant.now).getEpochSecond).sorted
-                          .zipWithIndex
-                          .reverse.headOption.getOrElse((0L, 0))
-
-                        sec0 mustEqual 1588102234
-                        // sec0 shouldEqual sec1._2
-
-                        // Try import.
-                        val now = Instant.now()
-                        val spec0 = RcSpecimen(
-                          RecordId = "ABCDEFG".some,
-                          RedcapRepeatInstance = (sec1._2 + 1).some,
-                          SpecDate = now.some,
-                          SpecModifyDate = now.some
-                        )
-
-                        val n = apiAggregator.apiService.importData[List[RcSpecimen]] (List(spec0), Chain("content" -> "record") ++ Chain("token" -> token.getOrElse("")))
-                          .compile.toList.unsafeRunSync()
-
-                        println(n)
-
-                      case Left(e) =>
-                        println(e.show)
-
-                    }
-                    Stream.emit(())
-                }
-            }
+            .flatMap(handleCreateProject(apiAggregator))
+            // flatMap(handleExportResponse(apiAggregator))
+            .through(_.map(println(_)))
             .compile.drain.unsafeRunSync()
 
           IO.unit
