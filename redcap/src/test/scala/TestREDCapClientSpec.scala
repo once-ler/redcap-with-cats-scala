@@ -153,7 +153,6 @@ class TestREDCapClientSpec extends Specification {
     }
 
     "Find repeat instruments with a known key" in {
-      // def handleCreateProject[F[_]](apiAggregator: ApiAggregator[F]): Option[String] => Stream[F, (Option[String], Either[Chain[String], List[RcSpecimen]])] =
       def handleCreateProject[F[_]](apiAggregator: ApiAggregator[F]): Option[String] => Stream[F, ApiResp] =
         token =>
           apiAggregator.apiService.exportData[List[RcSpecimen]](record("research_specimens") ++ Chain("token" -> token.getOrElse("")))
