@@ -16,17 +16,19 @@ package object client {
   import infrastructure.http._
   import infrastructure.doobie.interpreters._
 
-  def createREDCapClientResource[F[_]: Async :ContextShift :ConcurrentEffect: Timer] =
+  def createREDCapClientResource[F[_]: Async :ContextShift :ConcurrentEffect: Timer](targetConfig: String = "local") =
     for {
       implicit0(logs: MonadLog[F, Chain[String]]) <- Resource.liftF(MonadLog.createMonadLog[F, String])
       conf <- Resource.liftF(ConfigParser.decodePathF[F, AppConfig]("redcap"))
-      _ <- Resource.liftF(DatabaseConfig.initializeDb[F](conf.db.local)) // Lifts an applicative into a resource. Resource[Tuple1, Nothing[Unit]]
-      connEc <- ExecutionContexts.fixedThreadPool[F](conf.db.local.connections.poolSize)
+      dbConfig <- Resource.liftF(ConfigParser.decodePathF[F, DatabaseConfig](s"redcap.db.$targetConfig"))
+      _ <- Resource.liftF(DatabaseConfig.initializeDb[F](dbConfig)) // Lifts an applicative into a resource. Resource[Tuple1, Nothing[Unit]]
+      connEc <- ExecutionContexts.fixedThreadPool[F](dbConfig.connections.poolSize)
       txnEc <- ExecutionContexts.cachedThreadPool[F]
-      xa <- DatabaseConfig.dbTransactor[F](conf.db.local, connEc, Blocker.liftExecutionContext(txnEc))
+      xa <- DatabaseConfig.dbTransactor[F](dbConfig, connEc, Blocker.liftExecutionContext(txnEc))
       tokenRepo = DoobieProjectTokenRepositoryInterpreter[F](xa)
       tokenService = ProjectTokenService(tokenRepo)
-      apiRepo = HttpInterpreter[F](conf.http.local)
+      apiRepoHttpConfig <- Resource.liftF(ConfigParser.decodePathF[F, HttpConfig](s"redcap.http.$targetConfig")) 
+      apiRepo = HttpInterpreter[F](apiRepoHttpConfig)
       apiService = ApiService(apiRepo)
       apiAggregator = ApiAggregator(apiService, tokenService)
     } yield apiAggregator
