@@ -8,17 +8,15 @@ import doobie.util.ExecutionContexts
 import io.circe.config.{parser => ConfigParser}
 import java.util.concurrent.Executors
 
-import domain.aggregators.Rc2Aggregator
+import com.eztier.redcap.entity.randmock.domain.aggregators.Rc2Aggregator
 
 package object randmock {
   import com.eztier.common.{MonadLog, _}
-  import com.eztier.redcap.entity._
+  import com.eztier.redcap.client._
   import domain._
-  import config._
-  import infrastructure.doobie._
-  import infrastructure.doobie._
   import infrastructure.http._
   import infrastructure.doobie.interpreters._
+  import com.eztier.redcap.entity.randmock.config._
 
   def createRc2AggregatorResource[F[_]: Async :ContextShift :ConcurrentEffect: Timer] =
     for {
@@ -32,7 +30,7 @@ package object randmock {
       tokenService = ProjectTokenService(tokenRepo)
       localApiRepo = HttpInterpreter[F](conf.http.local)
       localApiService = ApiService(localApiRepo)
-      localApiAggregator = ApiAggregator(apiService, tokenService)
+      localApiAggregator = ApiAggregator(localApiService, tokenService)
       remoteApiRepo = HttpInterpreter[F](conf.http.remote)
       remoteApiService = ApiService(remoteApiRepo)
       remoteApiAggregator = ApiAggregator(remoteApiService, tokenService)

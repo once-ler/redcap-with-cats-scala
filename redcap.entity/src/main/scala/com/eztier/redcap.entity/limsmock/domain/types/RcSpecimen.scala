@@ -1,9 +1,13 @@
 package com.eztier.redcap.entity.limsmock.domain
 package types
 
-import io.circe.derivation.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, Encoder, derivation}
+import io.circe.derivation.{deriveDecoder, deriveEncoder}
+import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDate}
+import scala.util.Try
+
+import com.eztier.common.Util._
 
 case class RcSpecimen
 (
