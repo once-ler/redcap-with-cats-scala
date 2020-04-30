@@ -77,7 +77,7 @@ class Rc2Aggregator[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
     }
 
   def fetch[A <: RcLocalRandomization](implicit ev: Decoder[A]) = {
-    val filter = "eligible = '1' and randodat <> ''"
+    val filter = "[eligible] = '1' and [randodat] <> ''"
     localApiAggregator.apiService.exportData[List[A]](record(localForm, None, filter.some))
       .flatMap(handleFetch)
   }
