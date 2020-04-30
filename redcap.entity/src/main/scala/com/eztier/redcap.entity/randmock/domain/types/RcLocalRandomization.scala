@@ -12,9 +12,9 @@ import com.eztier.common.Util.{instantToString, stringToInstant}
 case class RcLocalRandomization
 (
   SubjectId: Option[String],
-  Eligible: Option[Boolean],
+  Eligible: Option[String],
   Randodat: Option[LocalDate],
-  RandodatMsg: Option[String]
+  RandoAss: Option[String]
 )
 
 object RcLocalRandomization {

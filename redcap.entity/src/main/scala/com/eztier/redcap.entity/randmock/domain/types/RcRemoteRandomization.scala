@@ -12,7 +12,7 @@ import scala.util.Try
 case class RcRemoteRandomization
 (
   RecordId: Option[String],
-  Rmyn: Option[Boolean],
+  Rmyn: Option[String],
   Rmrdate: Option[LocalDate],
   Ragroup: Option[String]
 )

@@ -22,18 +22,10 @@ package object randmock {
     for {
       implicit0(logs: MonadLog[F, Chain[String]]) <- Resource.liftF(MonadLog.createMonadLog[F, String])
       conf <- Resource.liftF(ConfigParser.decodePathF[F, AppConfig]("redcapEntity.randmock"))
-      _ <- Resource.liftF(DatabaseConfig.initializeDb[F](conf.db.local))
-      connEc <- ExecutionContexts.fixedThreadPool[F](conf.db.local.connections.poolSize)
-      txnEc <- ExecutionContexts.cachedThreadPool[F]
-      xa <- DatabaseConfig.dbTransactor[F](conf.db.local, connEc, Blocker.liftExecutionContext(txnEc))
-      tokenRepo = DoobieProjectTokenRepositoryInterpreter[F](xa)
-      tokenService = ProjectTokenService(tokenRepo)
-      localApiRepo = HttpInterpreter[F](conf.http.local)
-      localApiService = ApiService(localApiRepo)
-      localApiAggregator = ApiAggregator(localApiService, tokenService)
-      remoteApiRepo = HttpInterpreter[F](conf.http.remote)
-      remoteApiService = ApiService(remoteApiRepo)
-      remoteApiAggregator = ApiAggregator(remoteApiService, tokenService)
-      rc2Aggregator = Rc2Aggregator(localApiAggregator, remoteApiAggregator, conf.http.local.form, conf.http.remote.form)
+      rcResources <- for {
+          localRcResource <- createREDCapClientResource[F]("local")
+          remoteRcResource <- createREDCapClientResource[F]("remote")
+        } yield (localRcResource, remoteRcResource)
+      rc2Aggregator = Rc2Aggregator(rcResources._1, rcResources._2, conf.http.local.form, conf.http.remote.form)
     } yield rc2Aggregator
 }
