@@ -25,17 +25,27 @@ class TestLimsSpecimenSpec extends Specification {
         case lvToRcAggregator =>
 
           val csvFilePath = s"${System.getProperty("user.dir")}/../tmp/db/test.tsv"
-          val csvFile = lvToRcAggregator.apiAggregator.apiService.readAllFromFile(csvFilePath).compile.toList.unsafeRunSync()
-          val a = csvFile.mkString("")
-          println(a)
+          // Read entire file.  Not a good idea.
+          // val a = lvToRcAggregator.apiAggregator.apiService.readAllFromFile(csvFilePath).unsafeRunSync()
 
-          implicit val csvconf = CSVConfig(delimiter= '\t')
+          val s = lvToRcAggregator.apiAggregator.apiService.readByLinesFromFile(csvFilePath)
 
-          val l = CSVConverter[List[LimsSpecimen]]
-            .from(Some(a).fold("")(a => a))
-            .fold(e => List[LimsSpecimen](), s => s)
+          s.chunkN(10)
+            .flatMap { c =>
+              val a = c.toList.mkString("\n")
 
-          val r = lvToRcAggregator.limsSpecimenService.insertMany(l).unsafeRunSync()
+              implicit val csvconf = CSVConfig(delimiter= '\t')
+
+              val l = CSVConverter[List[LimsSpecimen]]
+                .from(Some(a).fold("")(a => a))
+                .fold(_ => List[LimsSpecimen](), s => s)
+
+              println(l.length)
+
+              val r = lvToRcAggregator.limsSpecimenService.insertMany(l).unsafeRunSync()
+
+              Stream.emit(()).covary[IO]
+            }.compile.drain.unsafeRunSync()
 
           IO.unit
       }.unsafeRunSync()

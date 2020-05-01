@@ -21,8 +21,11 @@ class ApiService[F[_]: Functor: Monad](repository: ApiAlgebra[F])(implicit ev: M
   def exportData[A](options: Chain[(String, String)])(implicit ev: Decoder[A]): Stream[F, Either[Chain[String], A]] =
     repository.exportData(options)
 
-  def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
+  def readAllFromFile(path: String, bufferSize: Int = 8192): F[String] =
     repository.readAllFromFile(path, bufferSize)
+
+  def readByLinesFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
+    repository.readByLinesFromFile(path, bufferSize)
 
   def showLog: F[String] =
     repository.showLog

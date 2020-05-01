@@ -34,7 +34,7 @@ class ApiAggregator[F[_]: Functor](
 
     for {
       y <- a.flatMap { conf =>
-        apiService.readAllFromFile(conf.odm.getOrElse(""))
+        Stream.eval(apiService.readAllFromFile(conf.odm.getOrElse("")))
           .through(toImportProjectPipeS(data))
           .flatMap { in =>
             // TODO: logging

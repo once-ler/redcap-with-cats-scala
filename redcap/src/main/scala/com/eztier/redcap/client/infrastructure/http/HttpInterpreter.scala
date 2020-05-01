@@ -8,9 +8,9 @@ import cats.{Applicative, Functor}
 import cats.effect.{Blocker, ConcurrentEffect, ContextShift, Sync}
 import cats.implicits._
 import fs2.{Pipe, Stream}
-import fs2.text.{utf8Decode, utf8DecodeC, utf8Encode}
+import fs2.text.{utf8Decode, utf8DecodeC, utf8Encode, lines}
+
 import io.circe._
-// import io.circe.generic.extras._
 import io.circe.syntax._
 import io.circe.parser._
 import io.circe.optics.JsonPath._
@@ -19,12 +19,13 @@ import java.util.concurrent.Executors
 
 import org.http4s._
 import org.http4s.client.blaze.BlazeClientBuilder
+
+import scala.concurrent.ExecutionContext
+
 import common.{MonadLog, _}
 import common.Util._
 import domain._
 import com.eztier.redcap.client.config.HttpConfig
-
-import scala.concurrent.ExecutionContext
 
 class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
   (conf: HttpConfig)(implicit logs: MonadLog[F, Chain[String]])
@@ -86,10 +87,22 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
       })
     }
 
-  def readAllFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
+  def readAllFromFile(path: String, bufferSize: Int = 8192): F[String] =
     for {
       str <- fs2.io.file.readAll(Paths.get(path), blocker, bufferSize)
         .through(utf8Decode)
+        .handleErrorWith { e =>
+          val ex = WrapThrowable(e).printStackTraceAsString
+          Stream.eval(logs.log(Chain.one(s"${ex}")))
+            .flatMap(a => Stream.emit(ex))
+        }.compile.toList
+    } yield str.mkString("")
+
+  def readByLinesFromFile(path: String, bufferSize: Int = 8192): Stream[F, String] =
+    for {
+      str <- fs2.io.file.readAll(Paths.get(path), blocker, bufferSize)
+        .through(utf8Decode)
+        .through(lines)
         .handleErrorWith { e =>
           val ex = WrapThrowable(e).printStackTraceAsString
           Stream.eval(logs.log(Chain.one(s"${ex}")))
