@@ -10,12 +10,13 @@ import com.eztier.common.Util._
 case class LimsSpecimen
 (
   SSTUDYID: Option[String] = None,
+  REDCAPID: Option[String] = None,
   U_MRN: Option[String] = None,
   U_FIRSTNAME: Option[String] = None,
   U_LASTNAME: Option[String] = None,
   BIRTHDATE: Option[LocalDate] = None,
   STUDYLINKID: Option[String] = None,
-  USE_STUDYLINKID: Option[Boolean] = None,
+  USE_STUDYLINKID: Option[Int] = None,
   SAMPLEKEY: Option[String] = None,
   SAMPLEVALUE: Option[String] = None,
   SAMPLE_COLLECTION_DATE: Option[LocalDate] = None,

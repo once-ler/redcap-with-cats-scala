@@ -1,5 +1,14 @@
-package com.eztier.redcap.entity;
+package com.eztier.redcap.entity
 
+import cats.effect._
+import cats.implicits._
+import fs2.Stream
+
+import randmock.domain.aggregators.Rc2Aggregator
+import randmock.domain.types.RcLocalRandomization
+import randmock._
+
+import scala.concurrent.duration._
 object App extends IOApp {
 
   def createAggregators[F[_]: ContextShift: ConcurrentEffect: Timer]: IO[Unit] = {

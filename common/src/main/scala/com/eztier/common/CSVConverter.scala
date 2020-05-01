@@ -17,9 +17,14 @@
 package com.eztier
 package common
 
+import java.time.{Instant, LocalDate}
+import java.time.format.DateTimeFormatter
+
+import com.eztier.common.Util.{instantToString, stringToInstant}
 import shapeless._
+
 import scala.collection.immutable.{:: => Cons}
-import scala.util.{Try,Success,Failure}
+import scala.util.{Failure, Success, Try}
 
 case class CSVConfig(delimiter: Char = ',')
 
@@ -39,6 +44,8 @@ object CSVConverter {
   def fail(s: String) = Failure(new CSVException(s))
 
   // Primitives
+  private val defaultDateTimeFormatterString = "yyyy-MM-dd HH:mm:ss"
+  private val defaultLocalDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
   implicit def stringCSVConverter: CSVConverter[String] = new CSVConverter[String] {
     def from(s: String): Try[String] = Success(s)
@@ -48,6 +55,16 @@ object CSVConverter {
   implicit def intCsvConverter: CSVConverter[Int] = new CSVConverter[Int] {
     def from(s: String): Try[Int] = Try(s.toInt)
     def to(i: Int): String = i.toString
+  }
+
+  implicit def localDateConverter: CSVConverter[LocalDate] = new CSVConverter[LocalDate] {
+    def from(s: String): Try[LocalDate] = Try(LocalDate.parse(s, defaultLocalDateFormatter))
+    def to(i: LocalDate): String = i.format(defaultLocalDateFormatter)
+  }
+
+  implicit def instantConverter: CSVConverter[Instant] = new CSVConverter[Instant] {
+    def from(s: String): Try[Instant] = Try(stringToInstant(s, Some(defaultDateTimeFormatterString)))
+    def to(i: Instant): String = instantToString(i, Some(defaultDateTimeFormatterString))
   }
 
   def listCsvLinesConverter[A](l: List[String])(implicit ec: CSVConverter[A])

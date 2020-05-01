@@ -2,6 +2,7 @@ package com.eztier
 package redcap.client
 package test
 
+import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDate}
 
 import cats.implicits._
@@ -14,8 +15,12 @@ import io.circe.syntax._
 import org.http4s.{Header, Headers}
 import org.specs2.mutable._
 
+import scala.util.Try
+
 // import io.circe.generic.semiauto._
 import domain._
+
+import com.eztier.common.Util._
 
 object TestFixtures {
   
@@ -102,7 +107,7 @@ class TestREDCapClientSpec extends Specification {
   "REDCap Client Resource" should {
     "Create usable client" in {
 
-      createREDCapClientResource[IO].use {
+      createREDCapClientResource[IO]("local").use {
         case apiAggregator =>
 
           apiAggregator.createProject(proj, projectId)
@@ -129,7 +134,7 @@ class TestREDCapClientSpec extends Specification {
 
     "Create new project with ODM" in {
 
-      createREDCapClientResource[IO].use { case apiAggregator =>
+      createREDCapClientResource[IO]("local").use { case apiAggregator =>
 
         import config._
         val prog = apiAggregator.createProject(proj, projectId)
@@ -143,7 +148,7 @@ class TestREDCapClientSpec extends Specification {
     }
 
     "Find a record with a known key" in {
-      createREDCapClientResource[IO].use {
+      createREDCapClientResource[IO]("local").use {
         case apiAggregator =>
 
           apiAggregator.createProject(proj, projectId)
@@ -201,7 +206,7 @@ class TestREDCapClientSpec extends Specification {
             Stream.emit(ApiError(Json.Null, e.show)).covary[F]
         }
 
-      createREDCapClientResource[IO].use {
+      createREDCapClientResource[IO]("local").use {
         case apiAggregator =>
 
           apiAggregator.createProject(proj, projectId)

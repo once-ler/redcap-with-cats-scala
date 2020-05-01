@@ -61,7 +61,7 @@ class REDCapInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
     }
 
   def fetch[A](in: LimsSpecimen)(implicit ev: Decoder[A]) = {
-    val recordId = if (in.USE_STUDYLINKID.getOrElse(false)) in.STUDYLINKID.getOrElse("") else in.U_MRN.getOrElse("")
+    val recordId = if (in.USE_STUDYLINKID.getOrElse(0) == 1) in.STUDYLINKID.getOrElse("") else in.U_MRN.getOrElse("")
 
     val proj = Project(
       ProjectTitle = in.SSTUDYID,
