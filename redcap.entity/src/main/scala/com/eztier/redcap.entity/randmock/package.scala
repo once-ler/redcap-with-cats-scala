@@ -8,14 +8,10 @@ import doobie.util.ExecutionContexts
 import io.circe.config.{parser => ConfigParser}
 import java.util.concurrent.Executors
 
-import com.eztier.redcap.entity.randmock.domain.aggregators.Rc2Aggregator
-
 package object randmock {
+  import domain.aggregators.Rc2Aggregator
   import com.eztier.common.{MonadLog, _}
   import com.eztier.redcap.client._
-  import domain._
-  import infrastructure.http._
-  import infrastructure.doobie.interpreters._
   import com.eztier.redcap.entity.randmock.config._
 
   def createRc2AggregatorResource[F[_]: Async :ContextShift :ConcurrentEffect: Timer] =

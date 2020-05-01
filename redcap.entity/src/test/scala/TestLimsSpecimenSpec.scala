@@ -10,6 +10,7 @@ import com.eztier.common.Util.csvToCC
 import com.eztier.common.{CSVConfig, CSVConverter}
 import com.eztier.redcap.client.createREDCapClientResource
 import com.eztier.redcap.entity.limsmock.domain.types.LimsSpecimen
+import com.eztier.redcap.entity.limsmock.createLvToRcAggregatorResource
 
 class TestLimsSpecimenSpec extends Specification {
 
@@ -20,22 +21,21 @@ class TestLimsSpecimenSpec extends Specification {
   "REDCap Client Resource" should {
     "Create usable client" in {
 
-      createREDCapClientResource[IO]("local").use {
-        case apiAggregator =>
+      createLvToRcAggregatorResource[IO].use {
+        case lvToRcAggregator =>
 
-          val csvFile = s"${System.getProperty("user.dir")}/../tmp/db/test.tsv"
-          apiAggregator.apiService.readAllFromFile(csvFile)
-              .flatMap{ a =>
-                println(a)
+          val csvFilePath = s"${System.getProperty("user.dir")}/../tmp/db/test.tsv"
+          val csvFile = lvToRcAggregator.apiAggregator.apiService.readAllFromFile(csvFilePath).compile.toList.unsafeRunSync()
+          val a = csvFile.mkString("")
+          println(a)
 
-                import com.eztier.common.CSVConverter._
+          implicit val csvconf = CSVConfig(delimiter= '\t')
 
-                implicit val csvconf = CSVConfig(delimiter= '\t')
+          val l = CSVConverter[List[LimsSpecimen]]
+            .from(Some(a).fold("")(a => a))
+            .fold(e => List[LimsSpecimen](), s => s)
 
-                val l = csvToCC(CSVConverter[List[LimsSpecimen]], Some(a), LimsSpecimen())
-
-                Stream.emit(()).covary[IO]
-              }.compile.drain.unsafeRunSync()
+          val r = lvToRcAggregator.limsSpecimenService.insertMany(l).unsafeRunSync()
 
           IO.unit
       }.unsafeRunSync()
