@@ -2,7 +2,9 @@ package com.eztier
 package redcap.entity
 package test
 
+import cats.data.Chain
 import shapeless._
+import cats.implicits._
 import cats.effect.IO
 import fs2.Stream
 import org.specs2.mutable.Specification
@@ -100,21 +102,44 @@ class TestLimsSpecimenSpec extends Specification {
             z = Stream.emits(y)
               .flatMap { case (key, vals) =>
 
-                Stream.emits(vals).covary[IO]
-                  .chunkN(100)
-                  .flatMap { s =>
+                // Get token for project.
+                for {
+                  token <- lvToRcAggregator
+                    .apiAggregator
+                    .tokenService.findById(key.some)
+                    .fold(_ => None, a => a)
 
-                    val u = s.map { t =>
-                      sampleValueToRcSpecimen(t.SAMPLEVALUE)
-                        .getOrElse(RcSpecimen())
-                        .copy(SpecDate = t.SAMPLE_COLLECTION_DATE, SpecModifyDate = t.MODIFYDATE)
-                    }.filter(_.SpecModifyDate.isDefined)
+                  s0 <- Stream.emits(vals).covary[IO]
+                    .chunkN(100)
+                    .flatMap { s =>
 
+                      val u = s.map { t =>
+                        val recordId = if (t.USE_STUDYLINKID.getOrElse(0) == 1) t.STUDYLINKID else t.U_MRN
+
+                        sampleValueToRcSpecimen(t.SAMPLEVALUE)
+                          .getOrElse(RcSpecimen())
+                          .copy(RecordId = recordId, SpecDate = t.SAMPLE_COLLECTION_DATE, SpecModifyDate = t.MODIFYDATE)
+                      }.filter(_.SpecModifyDate.isDefined).toList
+
+                      Stream.emits(u).covary[IO]
+                    }
+
+                  s1 <- {
+                    val recordId = s0.RecordId
                     // Persist to database.
+                    // TODO: Check whether record instrument already exist.
+                    lvToRcAggregator
+                      .apiAggregator
+                      .apiService
+                      .exportData[List[RcSpecimen]](record("research_specimens", recordId) ++ Chain("token" -> token.getOrElse("")))
 
                     Stream.emit(()).covary[IO]
                   }
-              }.compile.drain.unsafeRunSync()
+                } yield ()
+
+                Stream.emit(()).covary[IO]
+              }
+              // }.compile.drain.unsafeRunSync()
           } yield ()
 
           IO.delay(s.unsafeRunSync())
