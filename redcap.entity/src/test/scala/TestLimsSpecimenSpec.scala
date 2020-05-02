@@ -2,17 +2,19 @@ package com.eztier
 package redcap.entity
 package test
 
-import cats.data.Chain
-import shapeless._
+import java.time.Instant
+
+import cats.data._
 import cats.implicits._
 import cats.effect.IO
 import fs2.Stream
 import org.specs2.mutable.Specification
-import com.eztier.common.Util.csvToCC
 import com.eztier.common.{CSVConfig, CSVConverter, CaseClassFromMap}
 import com.eztier.redcap.client.createREDCapClientResource
+import com.eztier.redcap.client.domain.{ApiError, ProjectToken}
 import com.eztier.redcap.entity.limsmock.domain.types.{LimsSpecimen, RcSpecimen}
 import com.eztier.redcap.entity.limsmock.createLvToRcAggregatorResource
+import io.circe.Json
 
 class TestLimsSpecimenSpec extends Specification {
 
@@ -57,7 +59,17 @@ class TestLimsSpecimenSpec extends Specification {
 
     "Convert LimsSpecimen to RcSpecimen" in {
 
-      import com.eztier.common.Util
+      def record(forms: Option[String], patid: Option[String] = None, filter: Option[String] = None): Chain[(String, String)] =
+        Chain(
+          "content" -> "record",
+          "forms" -> forms.getOrElse("")
+        ) ++ (patid match {
+          case Some(a) => Chain("records" -> a)
+          case None => Chain.empty[(String, String)]
+        }) ++ (filter match {
+          case Some(a) => Chain("filterLogic" -> a)
+          case None => Chain.empty[(String, String)]
+        })
 
       val lvToRcKeyMap = Map[String, String](
         "LV ParticipantID" -> "spec_lv_participant_id",
@@ -103,11 +115,13 @@ class TestLimsSpecimenSpec extends Specification {
               .flatMap { case (key, vals) =>
 
                 // Get token for project.
-                for {
-                  token <- lvToRcAggregator
+                val ns = for {
+                  maybeToken <- lvToRcAggregator
                     .apiAggregator
                     .tokenService.findById(key.some)
-                    .fold(_ => None, a => a)
+                    .fold(_ => ProjectToken().some, a => a)
+
+                  token = maybeToken.get.token
 
                   s0 <- Stream.emits(vals).covary[IO]
                     .chunkN(100)
@@ -126,20 +140,50 @@ class TestLimsSpecimenSpec extends Specification {
 
                   s1 <- {
                     val recordId = s0.RecordId
-                    // Persist to database.
-                    // TODO: Check whether record instrument already exist.
+                    val body = record("research_specimens".some, recordId) ++ Chain("token" -> token.getOrElse(""))
+
                     lvToRcAggregator
                       .apiAggregator
                       .apiService
-                      .exportData[List[RcSpecimen]](record("research_specimens", recordId) ++ Chain("token" -> token.getOrElse("")))
+                      .exportData[List[RcSpecimen]](body)
+                      .flatMap { m =>
+                        m match {
+                          case Right(l) =>
 
-                    Stream.emit(()).covary[IO]
+                            val sec1 = l.map(a => a.SpecModifyDate.getOrElse(Instant.now).getEpochSecond).sorted
+                              .zipWithIndex
+                              .reverse.headOption.getOrElse((0L, -1))
+
+                            val n = l.find(a => a.RecordId.eqv(recordId)) match {
+                              case Some(b) =>
+                                // Update
+                                s0.copy(
+                                  RedcapRepeatInstance = b.RedcapRepeatInstance
+                                )
+                              case None =>
+                                // Insert
+                                s0.copy(
+                                  RedcapRepeatInstance = (sec1._2 + 2).some
+                                )
+                            }
+
+                            lvToRcAggregator
+                              .apiAggregator
+                              .apiService
+                              .importData[List[RcSpecimen]] (List(n), Chain("content" -> "record") ++ Chain("token" -> token.getOrElse("")))
+                          case Left(e) =>
+                            // Report error.
+                            // println(e.show)
+                            Stream.emit(ApiError(Json.Null, e.show)).covary[IO]
+                        }
+                      }
                   }
-                } yield ()
+                } yield s1
+
+                  
 
                 Stream.emit(()).covary[IO]
               }
-              // }.compile.drain.unsafeRunSync()
           } yield ()
 
           IO.delay(s.unsafeRunSync())
