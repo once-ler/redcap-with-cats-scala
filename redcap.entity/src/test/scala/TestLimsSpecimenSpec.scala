@@ -82,8 +82,7 @@ class TestLimsSpecimenSpec extends Specification {
         "UNIT" -> "spec_unit",
         "CONTAINER_TYPE" -> "spec_container_type",
         "STORAGE_STATUS" -> "spec_storage_status",
-        "LOCATION" -> "spec_location",
-        "SAMPLEKEY" -> "spec_sample_key"
+        "LOCATION" -> "spec_location"
       )
 
       val sampleValueToRcSpecimen: Option[String] => Option[RcSpecimen] =
@@ -118,7 +117,7 @@ class TestLimsSpecimenSpec extends Specification {
 
                   sampleValueToRcSpecimen(t.SAMPLEVALUE)
                     .getOrElse(RcSpecimen())
-                    .copy(RecordId = recordId, SpecDate = t.SAMPLE_COLLECTION_DATE, SpecModifyDate = t.MODIFYDATE)
+                    .copy(RecordId = recordId, SpecDate = t.SAMPLE_COLLECTION_DATE, SpecModifyDate = t.MODIFYDATE, SpecSampleKey = t.SAMPLEKEY)
                 }.filter(_.SpecModifyDate.isDefined).toList
               )
             }
@@ -138,20 +137,21 @@ class TestLimsSpecimenSpec extends Specification {
                 m match {
                   case Right(l) =>
 
-                    val sec1 = l.map(a => a.SpecModifyDate.getOrElse(Instant.now).getEpochSecond).sorted
+                    val sec1 = l.map(a => a.SpecSampleKey.getOrElse("")).sorted
                       .zipWithIndex
-                      .reverse.headOption.getOrElse((0L, -1))
 
-                    val n = l.find(a => a.SpecSampleKey.eqv(s0.SpecSampleKey)) match {
-                      case Some(b) =>
+                    val sec2 = sec1.reverse.headOption.getOrElse(("", -1))
+
+                    val n = sec1.find(a => a._1.eqv(s0.SpecSampleKey.getOrElse(""))) match {
+                      case Some((key, idx)) =>
                         // Update
                         s0.copy(
-                          RedcapRepeatInstance = b.RedcapRepeatInstance
+                          RedcapRepeatInstance = (idx + 1).some
                         )
                       case None =>
                         // Insert
                         s0.copy(
-                          RedcapRepeatInstance = (sec1._2 + 2).some
+                          RedcapRepeatInstance = (sec2._2 + 2).some
                         )
                     }
 
