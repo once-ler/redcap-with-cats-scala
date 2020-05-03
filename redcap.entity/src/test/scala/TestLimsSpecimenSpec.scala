@@ -82,7 +82,8 @@ class TestLimsSpecimenSpec extends Specification {
         "UNIT" -> "spec_unit",
         "CONTAINER_TYPE" -> "spec_container_type",
         "STORAGE_STATUS" -> "spec_storage_status",
-        "LOCATION" -> "spec_location"
+        "LOCATION" -> "spec_location",
+        "SAMPLEKEY" -> "spec_sample_key"
       )
 
       val sampleValueToRcSpecimen: Option[String] => Option[RcSpecimen] =
@@ -141,7 +142,7 @@ class TestLimsSpecimenSpec extends Specification {
                       .zipWithIndex
                       .reverse.headOption.getOrElse((0L, -1))
 
-                    val n = l.find(a => a.RecordId.eqv(recordId)) match {
+                    val n = l.find(a => a.SpecSampleKey.eqv(s0.SpecSampleKey)) match {
                       case Some(b) =>
                         // Update
                         s0.copy(

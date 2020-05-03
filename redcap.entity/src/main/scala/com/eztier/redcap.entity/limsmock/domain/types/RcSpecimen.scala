@@ -25,7 +25,8 @@ case class RcSpecimen
   SpecContainerType: Option[String] = None,
   SpecStorageStatus: Option[String] = None,
   SpecLocation: Option[String] = None,
-  SpecModifyDate: Option[Instant] = None
+  SpecModifyDate: Option[Instant] = None,
+  SpecSampleKey: Option[String] = None
 )
 
 object RcSpecimen {
