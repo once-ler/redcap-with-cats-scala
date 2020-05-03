@@ -73,6 +73,12 @@ class ApiAggregator[F[_]: Functor](
 
   }
 
+  def getProjectToken(key: Option[String]): F[Option[ProjectToken]] =
+    tokenService
+      .findById(key)
+      .fold(_ => None, a => a)
+
+
 }
 
 object ApiAggregator {
