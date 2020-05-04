@@ -122,6 +122,57 @@ class TestLimsSpecimenSpec extends Specification {
               )
             }
 
+      def tryPersistListRcSpecimenImplPipeS[F[_]: Sync](vals: List[(String, List[RcSpecimen])], lvToRcAggregator: LvToRcAggregator[F], token: Option[String]): Stream[F, ApiResp] =
+      {
+
+        Stream.emits(vals)
+          .covary[F]
+          .flatMap[F, ApiResp] { case (recordId, samples) =>
+            val body = record("research_specimens".some, recordId.some) ++ Chain("token" -> token.getOrElse(""))
+
+            lvToRcAggregator
+              .apiAggregator
+              .apiService
+              .exportData[List[RcSpecimen]](body)
+              .flatMap[F, ApiResp] { m =>
+              m match {
+                case Right(l) =>
+                  val samplesSorted = samples.sortBy(_.SpecSampleKey.getOrElse(""))
+
+                  val sec1 = l.map(a => a.SpecSampleKey.getOrElse("")).sorted
+                    .zipWithIndex
+
+                  val sec2 = sec1.reverse.headOption.getOrElse(("", -1))
+
+                  val ln = samplesSorted.map { s0 =>
+                    sec1.find(a => a._1.eqv(s0.SpecSampleKey.getOrElse(""))) match {
+                      case Some((key, idx)) =>
+                        // Update
+                        s0.copy(
+                          RedcapRepeatInstance = (idx + 1).some
+                        )
+                      case None =>
+                        // Insert
+                        s0.copy(
+                          RedcapRepeatInstance = (sec2._2 + 2).some
+                        )
+                    }
+                  }
+
+                  lvToRcAggregator
+                    .apiAggregator
+                    .apiService
+                    .importData[List[RcSpecimen]] (ln, Chain("content" -> "record") ++ Chain("token" -> token.getOrElse("")))
+                case Left(e) =>
+                  // Report error.
+                  // println(e.show)
+                  Stream.emit(ApiError(Json.Null, e.show)).covary[F]
+              }
+            }
+
+          }
+      }
+
       def tryPersistRcSpecimenImplPipeS[F[_]: Sync](vals: List[RcSpecimen], lvToRcAggregator: LvToRcAggregator[F], token: Option[String]): Stream[F, ApiResp] =
         Stream.emits(vals)
           .covary[F]
@@ -174,14 +225,26 @@ class TestLimsSpecimenSpec extends Specification {
 
           sampleValueToRcSpecimenPipeS(vals)
             .flatMap[F, ApiResp] { s0 =>
-            tryPersistRcSpecimenImplPipeS(s0, lvToRcAggregator, token)
+
+            val s1 = s0.sortBy(_.SpecSampleKey.getOrElse(""))
+
+            // Group by RecordId, fetch instruments for form 1 time.
+            val s2 = s1.groupBy(_.RecordId.getOrElse(""))
+              .mapValues(_.sortBy(_.SpecSampleKey.getOrElse("")))
+              .toList
+
+            tryPersistListRcSpecimenImplPipeS(s2, lvToRcAggregator, token)
+
+            // tryPersistRcSpecimenImplPipeS(s0, lvToRcAggregator, token)
           }
         }
 
       def fetchNext[F[_]: Sync](lvToRcAggregator: LvToRcAggregator[F]): Stream[F, ApiResp] =
         Stream.eval(lvToRcAggregator.limsSpecimenService.list())
           .flatMap[F, ApiResp] { x =>
-            val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get).toList
+            val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get)
+              .mapValues(_.sortBy(_.SAMPLEKEY.getOrElse("")))
+              .toList
 
             Stream.emits(y)
               .covary[F]
