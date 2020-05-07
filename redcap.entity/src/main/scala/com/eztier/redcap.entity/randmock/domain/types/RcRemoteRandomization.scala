@@ -11,10 +11,10 @@ import scala.util.Try
 
 case class RcRemoteRandomization
 (
-  RecordId: Option[String],
-  Rmyn: Option[String],
-  Rmrdate: Option[LocalDate],
-  Ragroup: Option[String]
+  RecordId: Option[String] = None,
+  Rmyn: Option[String] = None,
+  Rmrdate: Option[LocalDate] = None,
+  Ragroup: Option[String] = None
 )
 
 object RcRemoteRandomization {
@@ -31,6 +31,7 @@ object RcRemoteRandomization {
 
   implicit val dateEncoder: Encoder[LocalDate] = Encoder.encodeString.contramap[LocalDate](_.format(defaultLocalDateFormatter))
   implicit val dateDecoder: Decoder[LocalDate] = Decoder.decodeString.emapTry[LocalDate](str => {
-    Try(LocalDate.parse(str, defaultLocalDateFormatter))
+    val nstr = if (str.isEmpty) "1900-01-01" else str
+    Try(LocalDate.parse(nstr, defaultLocalDateFormatter))
   })
 }

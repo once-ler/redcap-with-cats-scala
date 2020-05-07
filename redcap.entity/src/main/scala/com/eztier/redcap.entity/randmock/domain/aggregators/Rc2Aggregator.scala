@@ -42,8 +42,10 @@ class Rc2Aggregator[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
   private def persistToRemote(l: List[RcLocalRandomization]): Either[Chain[String], List[RcRemoteRandomization]] => Stream[F, ApiResp] =
     d => d match {
       case Right(o) =>
+
         val n = o.map { p =>
-          val a = l.find(_.SubjectId == p.RecordId).get
+          val z = l.find(_.SubjectId.eqv(p.RecordId))
+          val a = z.get
 
           RcRemoteRandomization(
             RecordId = a.SubjectId,
@@ -66,7 +68,8 @@ class Rc2Aggregator[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
             .chunkN(10)
               .flatMap { c =>
                 val l = c.toList
-                remoteApiAggregator.apiService.exportData[List[RcRemoteRandomization]](record(remoteForm, l.map(_.SubjectId).mkString(",").some))
+                println(l)
+                remoteApiAggregator.apiService.exportData[List[RcRemoteRandomization]](record(remoteForm, l.map(_.SubjectId.getOrElse("")).mkString(",").some))
                   .flatMap(persistToRemote(l))
               }
         } yield x
