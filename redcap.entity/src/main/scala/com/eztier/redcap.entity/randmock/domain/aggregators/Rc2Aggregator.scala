@@ -44,8 +44,7 @@ class Rc2Aggregator[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
       case Right(o) =>
 
         val n = o.map { p =>
-          val z = l.find(_.SubjectId.eqv(p.RecordId))
-          val a = z.get
+          val a = l.find(_.SubjectId.eqv(p.RecordId)).get
 
           RcRemoteRandomization(
             RecordId = a.SubjectId,
