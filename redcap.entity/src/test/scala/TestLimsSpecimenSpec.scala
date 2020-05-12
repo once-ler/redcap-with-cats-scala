@@ -221,5 +221,20 @@ class TestLimsSpecimenSpec extends Specification {
     }
 
   }
+
+  "LimsSpecimen to RcSpecimen Aggregator" should {
+    "Run Unprocessed" should {
+      createLvToRcAggregatorResource[IO].use {
+        case lvToRcAggregator =>
+          IO.delay(lvToRcAggregator
+            .runUnprocessed
+            .compile
+            .drain
+            .unsafeRunSync())
+      }.unsafeRunSync()
+
+      1 mustEqual 1
+    }
+  }
 }
 
