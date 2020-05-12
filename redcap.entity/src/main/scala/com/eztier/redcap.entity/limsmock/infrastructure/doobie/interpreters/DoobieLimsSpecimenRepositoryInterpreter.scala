@@ -43,9 +43,13 @@ private object LimsSpecimenSQL {
     sql"""select SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE
          from labvantage.limsspecimen where redcapid = ${a.getOrElse("")}""".query
 
+  def getMaxDateProcessedSql: Query0[Option[java.time.Instant]] =
+    sql"""select max(MODIFYDATE) MODIFYDATE from labvantage.limsspecimen
+      """.query
+     
 }
 
-class DoobieLimsSpecimenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](val xa: Transactor[F])
+class DoobieLimsSpecimenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](val xa: Transactor[F])(implicit logs: MonadLog[F, Chain[String]])
   extends LimsSpecimenAlgebra[F] {
   import LimsSpecimenSQL._
 
@@ -60,9 +64,20 @@ class DoobieLimsSpecimenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](va
 
     OptionT.liftF(fa)
   }
+
+  override def getMaxDateProcessed: OptionT[F, Option[Instant]] =
+    OptionT(
+      getMaxDateProcessedSql.option.transact(xa)
+        .handleErrorWith{
+          e =>
+            for {
+              _ <- logs.log(Chain.one(WrapThrowable(e).printStackTraceAsString))
+            } yield None
+        }
+    )
 }
 
 object DoobieLimsSpecimenRepositoryInterpreter {
-  def apply[F[_]: Bracket[?[_], Throwable]](xa: Transactor[F]): DoobieLimsSpecimenRepositoryInterpreter[F] =
+  def apply[F[_]: Bracket[?[_], Throwable]](xa: Transactor[F])(implicit logs: MonadLog[F, Chain[String]]): DoobieLimsSpecimenRepositoryInterpreter[F] =
     new DoobieLimsSpecimenRepositoryInterpreter(xa)
 }
