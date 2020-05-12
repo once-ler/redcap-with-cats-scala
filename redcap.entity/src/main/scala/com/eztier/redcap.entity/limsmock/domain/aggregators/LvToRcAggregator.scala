@@ -16,7 +16,8 @@ import domain.services.LimsSpecimenService
 class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]]
 (
   val apiAggregator: ApiAggregator[F],
-  val limsSpecimenService: LimsSpecimenService[F]
+  val localLimsSpecimenService: LimsSpecimenService[F],
+  val remoteLimsSpecimenService: LimsSpecimenService[F]
 ) {
 
   private def record(forms: Option[String], patid: Option[String] = None, filter: Option[String] = None): Chain[(String, String)] =
@@ -152,7 +153,17 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
     }
 
   private def fetchNext: Stream[F, ApiResp] =
-    Stream.eval(limsSpecimenService.list())
+    Stream.eval(remoteLimsSpecimenService
+      .getMaxDateProcessed
+      .fold(_ => None, a => a)
+      )
+      .evalMap(remoteLimsSpecimenService.list(_))
+    // Stream.eval(localLimsSpecimenService.list())
+      .flatMap { l =>
+        Stream
+          .eval(localLimsSpecimenService.insertMany(l))
+          .map(_ => l)
+      }
       .flatMap[F, ApiResp] { x =>
         val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get)
           .mapValues(_.sortBy(_.SAMPLEKEY.getOrElse("")))
@@ -175,7 +186,8 @@ object LvToRcAggregator {
   def apply[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]]
   (
     apiAggregator: ApiAggregator[F],
-    limsSpecimenService: LimsSpecimenService[F]
+    localLimsSpecimenService: LimsSpecimenService[F],
+    remoteLimsSpecimenService: LimsSpecimenService[F]
   ): LvToRcAggregator[F] =
-    new LvToRcAggregator(apiAggregator, limsSpecimenService)
+    new LvToRcAggregator(apiAggregator, localLimsSpecimenService, remoteLimsSpecimenService)
 }

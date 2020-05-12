@@ -24,12 +24,15 @@ package object limsmock {
       connEc <- ExecutionContexts.fixedThreadPool[F](conf.db.local.connections.poolSize)
       txnEc <- ExecutionContexts.cachedThreadPool[F]
       xa <- DatabaseConfig.dbTransactor[F](conf.db.local, connEc, Blocker.liftExecutionContext(txnEc))
-      limsSpecimenRepo = DoobieLimsSpecimenRepositoryInterpreter[F](xa)
-      limsSpecimenService = LimsSpecimenService(limsSpecimenRepo)
+      xa2 <- DatabaseConfig.dbTransactor[F](conf.db.remote, connEc, Blocker.liftExecutionContext(txnEc))
+      localLimsSpecimenRepo = DoobieLimsSpecimenRepositoryInterpreter[F](xa)
+      localLimsSpecimenService = LimsSpecimenService(localLimsSpecimenRepo)
+      remoteLimsSpecimenRepo = DoobieLimsSpecimenRepositoryInterpreter[F](xa2)
+      remoteLimsSpecimenService = LimsSpecimenService(remoteLimsSpecimenRepo)
       rcResource <- for {
         localRcResource <- createREDCapClientResource[F]("local")
       } yield localRcResource
-      rc2Aggregator = LvToRcAggregator(rcResource, limsSpecimenService)
+      rc2Aggregator = LvToRcAggregator(rcResource, localLimsSpecimenService, remoteLimsSpecimenService)
     } yield rc2Aggregator
 
 }

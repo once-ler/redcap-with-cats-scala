@@ -191,7 +191,7 @@ class TestLimsSpecimenSpec extends Specification {
         }
 
       def fetchNext[F[_]: Sync](lvToRcAggregator: LvToRcAggregator[F]): Stream[F, ApiResp] =
-        Stream.eval(lvToRcAggregator.limsSpecimenService.list())
+        Stream.eval(lvToRcAggregator.localLimsSpecimenService.list())
           .flatMap[F, ApiResp] { x =>
             val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get)
               .mapValues(_.sortBy(_.SAMPLEKEY.getOrElse("")))
