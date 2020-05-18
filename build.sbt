@@ -83,7 +83,8 @@ lazy val redcapEntity =  (project in file("redcap.entity")).
     settings,
     assemblySettings,
     libraryDependencies ++= Seq(
-      specs2      
+      specs2,
+      doobiePostgres
     )
   ).dependsOn(
   common,
@@ -139,9 +140,10 @@ val http4sDsl = "org.http4s" %% "http4s-dsl" % Http4sVersion
 val http4sTesting = "org.http4s" %% "http4s-testing" % Http4sVersion % Test
 
 val doobie = "org.tpolecat" %% "doobie-core" % DoobieVersion
-val doobieH2 ="org.tpolecat" %% "doobie-h2" % DoobieVersion
-val doobieScalatest ="org.tpolecat" %% "doobie-scalatest" % DoobieVersion
-val doobieHikari ="org.tpolecat" %% "doobie-hikari" % DoobieVersion
+val doobieH2 = "org.tpolecat" %% "doobie-h2" % DoobieVersion
+val doobieScalatest = "org.tpolecat" %% "doobie-scalatest" % DoobieVersion
+val doobieHikari = "org.tpolecat" %% "doobie-hikari" % DoobieVersion
+val doobiePostgres = "org.tpolecat" %% "doobie-postgres" % DoobieVersion
 
 val h2 = "com.h2database" % "h2" % H2Version
 

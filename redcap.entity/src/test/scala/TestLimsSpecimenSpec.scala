@@ -223,7 +223,7 @@ class TestLimsSpecimenSpec extends Specification {
   }
 
   "LimsSpecimen to RcSpecimen Aggregator" should {
-    "Run Unprocessed" should {
+    "Run Unprocessed" in {
       createLvToRcAggregatorResource[IO].use {
         case lvToRcAggregator =>
           IO.delay(lvToRcAggregator
