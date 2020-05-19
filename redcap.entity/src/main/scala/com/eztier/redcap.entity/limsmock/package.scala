@@ -6,8 +6,8 @@ import doobie.util.ExecutionContexts
 import io.circe.config.{parser => ConfigParser}
 import java.util.concurrent.Executors
 
-import com.eztier.labvantage.entity.limsmock.infrastructure.doobie.interpreters.DoobieLimsSpecimenRepositoryInterpreter
-import com.eztier.redcap.entity.limsmock.domain.services.LimsSpecimenService
+import com.eztier.labvantage.entity.limsmock.infrastructure.doobie.interpreters.{DoobieLimsSpecimenRepositoryInterpreter, DoobieLimsSpecimenRemoteRepositoryInterpreter}
+import com.eztier.redcap.entity.limsmock.domain.services.{LimsSpecimenService, LimsSpecimenRemoteService}
 
 package object limsmock {
 
@@ -28,7 +28,7 @@ package object limsmock {
       localLimsSpecimenRepo = DoobieLimsSpecimenRepositoryInterpreter[F](xa)
       localLimsSpecimenService = LimsSpecimenService(localLimsSpecimenRepo)
       remoteLimsSpecimenRepo = DoobieLimsSpecimenRemoteRepositoryInterpreter[F](xa2)
-      remoteLimsSpecimenService = LimsSpecimenService(remoteLimsSpecimenRepo)
+      remoteLimsSpecimenService = LimsSpecimenRemoteService(remoteLimsSpecimenRepo)
       rcResource <- for {
         localRcResource <- createREDCapClientResource[F]("local")
       } yield localRcResource

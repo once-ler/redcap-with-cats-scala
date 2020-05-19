@@ -11,13 +11,13 @@ import io.circe.Json
 import com.eztier.common.{CSVConfig, CSVConverter, CaseClassFromMap}
 import com.eztier.redcap.client.domain.{ApiAggregator, ApiError, ApiResp, ProjectToken}
 import domain.types.{LimsSpecimen, RcSpecimen}
-import domain.services.LimsSpecimenService
+import domain.services.{LimsSpecimenService, LimsSpecimenRemoteService}
 
 class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]]
 (
   val apiAggregator: ApiAggregator[F],
   val localLimsSpecimenService: LimsSpecimenService[F],
-  val remoteLimsSpecimenService: LimsSpecimenService[F]
+  val remoteLimsSpecimenService: LimsSpecimenRemoteService[F]
 ) {
 
   private def record(forms: Option[String], patid: Option[String] = None, filter: Option[String] = None): Chain[(String, String)] =
@@ -160,7 +160,7 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
       )
       .flatMap(remoteLimsSpecimenService.list(_))
     // Stream.eval(localLimsSpecimenService.list())
-      .grouped(20)
+      .chunkN(20)
       .flatMap { c =>
         val l = c.toList
         Stream
@@ -190,7 +190,7 @@ object LvToRcAggregator {
   (
     apiAggregator: ApiAggregator[F],
     localLimsSpecimenService: LimsSpecimenService[F],
-    remoteLimsSpecimenService: LimsSpecimenService[F]
+    remoteLimsSpecimenService: LimsSpecimenRemoteService[F]
   ): LvToRcAggregator[F] =
     new LvToRcAggregator(apiAggregator, localLimsSpecimenService, remoteLimsSpecimenService)
 }

@@ -11,8 +11,8 @@ import algebra._
 
 class LimsSpecimenService[F[_]: Functor: Applicative: Sync](repository: LimsSpecimenAlgebra[F]) {
 
-  def list(lastModifyDate: Option[Instant] = None): F[List[LimsSpecimen]] =
-    repository.list(lastModifyDate)
+  def listUnprocessed: F[List[LimsSpecimen]] =
+    repository.listUnprocessed
 
   def insertMany(recs: List[LimsSpecimen]): F[Int] =
     repository.insertMany(recs)

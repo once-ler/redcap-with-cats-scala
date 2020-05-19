@@ -7,5 +7,5 @@ import java.time.Instant
 import types._
 
 trait LimsSpecimenRemoteAlgebra[F[_]] {
-  def list(lastModifyDate: Option[Instant] = None): Stream[F, FLimsSpecimen]
+  def list(lastModifyDate: Option[Instant] = None): Stream[F, LimsSpecimen]
 }

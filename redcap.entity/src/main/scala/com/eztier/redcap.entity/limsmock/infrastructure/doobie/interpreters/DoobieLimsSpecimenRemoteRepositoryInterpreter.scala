@@ -20,7 +20,7 @@ import com.eztier.common._
 import Util._
 import CatsLogger._
 
-private object LimsSpecimenSQL {
+private object LimsSpecimenRemoteSQL {
   /* We require conversion for date time */
   implicit val DateTimeMeta: Meta[Instant] =
     Meta[java.sql.Timestamp].imap(_.toInstant)(java.sql.Timestamp.from)
@@ -55,13 +55,13 @@ private object LimsSpecimenSQL {
 
 class DoobieLimsSpecimenRemoteRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](val xa: Transactor[F])(implicit logs: MonadLog[F, Chain[String]])
   extends LimsSpecimenRemoteAlgebra[F] {
-  import LimsSpecimenSQL._
+  import LimsSpecimenRemoteSQL._
 
   override def list(lastModifyDate: Option[Instant] = None): Stream[F, LimsSpecimen] = 
     listSql(lastModifyDate).stream.transact(xa)
 }
 
 object DoobieLimsSpecimenRemoteRepositoryInterpreter {
-  def apply[F[_]: Bracket[?[_], Throwable]](xa: Transactor[F])(implicit logs: MonadLog[F, Chain[String]]): DoobieLimsSpecimenRepositoryInterpreter[F] =
+  def apply[F[_]: Bracket[?[_], Throwable]](xa: Transactor[F])(implicit logs: MonadLog[F, Chain[String]]): DoobieLimsSpecimenRemoteRepositoryInterpreter[F] =
     new DoobieLimsSpecimenRemoteRepositoryInterpreter(xa)
 }
