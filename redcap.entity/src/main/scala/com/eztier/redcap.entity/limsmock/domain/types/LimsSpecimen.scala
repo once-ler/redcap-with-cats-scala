@@ -21,7 +21,11 @@ case class LimsSpecimen
   SAMPLEVALUE: Option[String] = None,
   SAMPLE_COLLECTION_DATE: Option[LocalDate] = None,
   CREATEDATE: Option[Instant] = None,
-  MODIFYDATE: Option[Instant] = None
+  MODIFYDATE: Option[Instant] = None,
+  id: Option[Long] = None,
+  processed: Option[Int] = None,
+  date_processed: Option[Instant] = None,
+  response: Option[String] = None
 )
 
 object LimsSpecimen {

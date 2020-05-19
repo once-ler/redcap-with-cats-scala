@@ -24,6 +24,7 @@ private object LimsSpecimenSQL {
   implicit val DateTimeMeta: Meta[Instant] =
     Meta[java.sql.Timestamp].imap(_.toInstant)(java.sql.Timestamp.from)
 
+  /*  
   val listFragment = fr"""
     select s_samplefamily.sstudyid SSTUDYID,
     s_study.u_redcap_projectid REDCAPID,
@@ -51,6 +52,8 @@ private object LimsSpecimenSQL {
   def listSql(lastModifyDate: Option[Instant] = None): Query0[LimsSpecimen] =
     (listFragment ++ listCriteriaFragment(lastModifyDate)).query
 
+  */
+
   def insertManySql(a: List[LimsSpecimen]): ConnectionIO[Int] = {
     val stmt = """
       insert into labvantage.limsspecimen (SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE)
@@ -77,7 +80,7 @@ class DoobieLimsSpecimenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](va
 
   override def insertMany(a: List[LimsSpecimen]): F[Int] = insertManySql(a).transact(xa)
 
-  override def list(lastModifyDate: Option[Instant] = None): F[List[LimsSpecimen]] = listSql(lastModifyDate).to[List].transact(xa)
+  // override def list(lastModifyDate: Option[Instant] = None): F[List[LimsSpecimen]] = listSql(lastModifyDate).to[List].transact(xa)
 
   override def findById(id: Option[String]): OptionT[F, Option[LimsSpecimen]] = {
     val fa = findByIdSql(id)

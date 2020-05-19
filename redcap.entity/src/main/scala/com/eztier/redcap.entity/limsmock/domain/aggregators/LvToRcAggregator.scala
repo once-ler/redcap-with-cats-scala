@@ -153,13 +153,16 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
     }
 
   private def fetchNext: Stream[F, ApiResp] =
-    Stream.eval(remoteLimsSpecimenService
-      .getMaxDateProcessed
-      .fold(_ => None, a => a)
+    Stream.eval(
+      localLimsSpecimenService
+        .getMaxDateProcessed
+        .fold(_ => None, a => a)
       )
-      .evalMap(remoteLimsSpecimenService.list(_))
+      .flatMap(remoteLimsSpecimenService.list(_))
     // Stream.eval(localLimsSpecimenService.list())
-      .flatMap { l =>
+      .grouped(20)
+      .flatMap { c =>
+        val l = c.toList
         Stream
           .eval(localLimsSpecimenService.insertMany(l))
           .map(_ => l)

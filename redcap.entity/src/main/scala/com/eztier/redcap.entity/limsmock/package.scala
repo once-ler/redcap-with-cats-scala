@@ -27,7 +27,7 @@ package object limsmock {
       xa2 <- DatabaseConfig.dbTransactor[F](conf.db.remote, connEc, Blocker.liftExecutionContext(txnEc))
       localLimsSpecimenRepo = DoobieLimsSpecimenRepositoryInterpreter[F](xa)
       localLimsSpecimenService = LimsSpecimenService(localLimsSpecimenRepo)
-      remoteLimsSpecimenRepo = DoobieLimsSpecimenRepositoryInterpreter[F](xa2)
+      remoteLimsSpecimenRepo = DoobieLimsSpecimenRemoteRepositoryInterpreter[F](xa2)
       remoteLimsSpecimenService = LimsSpecimenService(remoteLimsSpecimenRepo)
       rcResource <- for {
         localRcResource <- createREDCapClientResource[F]("local")

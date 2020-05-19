@@ -6,7 +6,7 @@ import java.time.Instant
 import types._
 
 trait LimsSpecimenAlgebra[F[_]] {
-  def list(lastModifyDate: Option[Instant] = None): F[List[LimsSpecimen]]
+  // def list(lastModifyDate: Option[Instant] = None): F[List[LimsSpecimen]]
 
   def insertMany(recs: List[LimsSpecimen]): F[Int]
 
