@@ -62,6 +62,11 @@ object App extends IOApp {
         .compile
         .drain
 
+      val io2 = lvToRcAggregator
+        .fetchNext
+        .compile
+        .drain
+
       repeat(io).unsafeRunSync()
     }
   }

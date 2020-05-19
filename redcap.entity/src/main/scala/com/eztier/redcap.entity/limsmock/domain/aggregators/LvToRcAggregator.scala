@@ -152,21 +152,21 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
       Stream.empty.covary[F]
     }
 
-  private def fetchNext: Stream[F, ApiResp] =
+  def fetchNext: Stream[F, Int] =
     Stream.eval(
       localLimsSpecimenService
         .getMaxDateProcessed
         .fold(_ => None, a => a)
       )
       .flatMap(remoteLimsSpecimenService.list(_))
-    // Stream.eval(localLimsSpecimenService.list())
       .chunkN(20)
       .flatMap { c =>
         val l = c.toList
         Stream
           .eval(localLimsSpecimenService.insertMany(l))
-          .map(_ => l)
+          // .map(_ => l)
       }
+      /*
       .flatMap[F, ApiResp] { x =>
         val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get)
           .mapValues(_.sortBy(_.SAMPLEKEY.getOrElse("")))
@@ -179,9 +179,25 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
               .flatMap[F, ApiResp](tryPersistRcSpecimenPipeS(vals))
           }
       }
+      */
 
   def runUnprocessed: Stream[F, Unit] =
-    fetchNext
+    localLimsSpecimenService
+      .listUnprocessed
+      .chunkN(20)
+      .map(_.toList)
+      .flatMap[F, ApiResp] { x =>
+        val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get)
+          .mapValues(_.sortBy(_.SAMPLEKEY.getOrElse("")))
+          .toList
+
+        Stream.emits(y)
+          .covary[F]
+          .flatMap[F, ApiResp] { case (key, vals) =>
+            Stream.eval(apiAggregator.getProjectToken(key.some))
+              .flatMap[F, ApiResp](tryPersistRcSpecimenPipeS(vals))
+          }
+      }
       .through(handlePersistResponse)      
 }
 

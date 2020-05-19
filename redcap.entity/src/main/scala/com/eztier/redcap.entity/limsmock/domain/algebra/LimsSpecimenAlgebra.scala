@@ -3,10 +3,11 @@ package algebra
 
 import cats.data.{EitherT, OptionT}
 import java.time.Instant
+import fs2.Stream
 import types._
 
 trait LimsSpecimenAlgebra[F[_]] {
-  def listUnprocessed: F[List[LimsSpecimen]]
+  def listUnprocessed: Stream[F, LimsSpecimen]
 
   def insertMany(recs: List[LimsSpecimen]): F[Int]
 

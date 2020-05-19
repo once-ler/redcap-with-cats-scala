@@ -9,6 +9,7 @@ import doobie.{ConnectionIO, Query0, Transactor, _}
 import doobie.implicits._
 import io.chrisdavenport.log4cats.Logger
 import java.time.Instant
+import fs2.Stream
 import scala.util.{Failure, Success, Try}
 
 import com.eztier.redcap.entity.limsmock._
@@ -60,7 +61,7 @@ class DoobieLimsSpecimenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](va
 
   override def insertMany(a: List[LimsSpecimen]): F[Int] = insertManySql(a).transact(xa)
 
-  override def listUnprocessed: F[List[LimsSpecimen]] = listSql.to[List].transact(xa)
+  override def listUnprocessed: Stream[F, LimsSpecimen] = listSql.stream.transact(xa)
 
   override def findById(id: Option[String]): OptionT[F, Option[LimsSpecimen]] = {
     val fa = findByIdSql(id)

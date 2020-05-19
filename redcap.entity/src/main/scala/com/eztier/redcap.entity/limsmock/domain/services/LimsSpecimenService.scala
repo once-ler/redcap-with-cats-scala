@@ -4,6 +4,7 @@ package services
 import cats.{Functor, Applicative}
 import cats.data.EitherT
 import cats.effect.Sync
+import fs2.Stream
 import java.time.Instant
 
 import types._
@@ -11,7 +12,7 @@ import algebra._
 
 class LimsSpecimenService[F[_]: Functor: Applicative: Sync](repository: LimsSpecimenAlgebra[F]) {
 
-  def listUnprocessed: F[List[LimsSpecimen]] =
+  def listUnprocessed: Stream[F, LimsSpecimen] =
     repository.listUnprocessed
 
   def insertMany(recs: List[LimsSpecimen]): F[Int] =
