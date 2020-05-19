@@ -1,6 +1,7 @@
 package com.eztier.redcap.entity.limsmock
 package domain.aggregators
 
+import cats._
 import cats.data._
 import cats.implicits._
 import cats.Functor
@@ -9,9 +10,10 @@ import fs2.{Pipe, Stream}
 import io.circe.Json
 
 import com.eztier.common.{CSVConfig, CSVConverter, CaseClassFromMap}
-import com.eztier.redcap.client.domain.{ApiAggregator, ApiError, ApiResp, ProjectToken}
+import com.eztier.redcap.client.domain.{ApiAggregator, ApiOk, ApiError, ApiResp, ProjectToken}
 import domain.types.{LimsSpecimen, RcSpecimen}
 import domain.services.{LimsSpecimenService, LimsSpecimenRemoteService}
+import java.time.Instant
 
 class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]]
 (
@@ -82,16 +84,26 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
         )
       }
 
-  private def tryPersistListRcSpecimenImplPipeS(vals: List[(String, List[RcSpecimen])], token: Option[String]): Stream[F, ApiResp] = 
+  private def rcSpecimenToLimsSpecimen(batch: List[RcSpecimen], vals: List[LimsSpecimen]): List[LimsSpecimen] =
+    batch.map { d =>
+      val maybeWithStudyLinkId = vals.find(t => t.STUDYLINKID == d.RecordId && t.SAMPLEKEY == d.SpecSampleKey)
+      val maybeWithMrn = vals.find(t => t.U_MRN == d.RecordId && t.SAMPLEKEY == d.SpecSampleKey)
+
+      maybeWithStudyLinkId <+> maybeWithMrn
+    }
+    .filter(_.isDefined)
+    .map(_.get)
+
+  private def tryPersistListRcSpecimenImplPipeS(vals: List[(String, List[RcSpecimen])], token: Option[String]): Stream[F, (List[RcSpecimen], ApiResp)] = 
     Stream.emits(vals)
       .covary[F]
-      .flatMap[F, ApiResp] { case (recordId, samples) =>
+      .flatMap[F, (List[RcSpecimen], ApiResp)] { case (recordId, samples) =>
         val body = record("research_specimens".some, recordId.some) ++ Chain("token" -> token.getOrElse(""))
 
         apiAggregator
           .apiService
           .exportData[List[RcSpecimen]](body)
-          .flatMap[F, ApiResp] { m =>
+          .flatMap[F, (List[RcSpecimen], ApiResp)] { m =>
             m match {
               case Right(l) =>
                 val samplesSorted = samples.sortBy(_.SpecSampleKey.getOrElse(""))
@@ -120,21 +132,43 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
                 apiAggregator
                   .apiService
                   .importData[List[RcSpecimen]] (ln._2, Chain("content" -> "record") ++ Chain("token" -> token.getOrElse("")))
+                  .flatMap(a => Stream.emit((ln._2, a)).covary[F])
               case Left(e) =>
                 // Report error.
                 // println(e.show)
-                Stream.emit(ApiError(Json.Null, e.show)).covary[F]
+                Stream.emit((samples, ApiError(Json.Null, e.show))).covary[F]
             }
         }
       }
   
+  private def handlePersistResponse: List[LimsSpecimen] => ((List[RcSpecimen], ApiResp)) => Stream[F, Int] =
+    vals => { 
+      case (batch, res) => {
+        val l = rcSpecimenToLimsSpecimen(batch, vals)
+          .map(d => d.copy(
+            processed = 1.some,
+            date_processed = Instant.now.some,
+            response = res match {
+              case b: ApiOk => b.body.toString.some
+              case _ => None
+            },
+            error = res match {
+              case b: ApiError => b.error.toString.some
+              case _ => None
+            }      
+          ))
 
-  private def tryPersistRcSpecimenPipeS(vals: List[LimsSpecimen]): Option[ProjectToken] => Stream[F, ApiResp] =
+        Stream
+          .eval(localLimsSpecimenService.updateMany(l))
+      }  
+    }
+
+  private def tryPersistRcSpecimenPipeS(vals: List[LimsSpecimen]): Option[ProjectToken] => Stream[F, Int] =
     maybeToken => {
       val token = maybeToken.getOrElse(ProjectToken()).token
 
       sampleValueToRcSpecimenPipeS(vals)
-        .flatMap[F, ApiResp] { s0 =>
+        .flatMap[F, Int] { s0 =>
 
         // Group by RecordId, fetch instruments for form 1 time.
         val s1 = s0.groupBy(_.RecordId.getOrElse(""))
@@ -142,14 +176,8 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
           .toList
 
         tryPersistListRcSpecimenImplPipeS(s1, token)
+          .flatMap(handlePersistResponse(vals))
       }
-    }
-
-  private def handlePersistResponse: Stream[F, ApiResp] => Stream[F, Unit] =
-    s => s.map { a => 
-      // Log
-      // println(a)
-      Stream.empty.covary[F]
     }
 
   def fetchNext: Stream[F, Int] =
@@ -181,24 +209,24 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
       }
       */
 
-  def runUnprocessed: Stream[F, Unit] =
+  def runUnprocessed: Stream[F, Int] =
     localLimsSpecimenService
       .listUnprocessed
       .chunkN(20)
       .map(_.toList)
-      .flatMap[F, ApiResp] { x =>
+      .flatMap[F, Int] { x =>
         val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get)
           .mapValues(_.sortBy(_.SAMPLEKEY.getOrElse("")))
           .toList
 
         Stream.emits(y)
           .covary[F]
-          .flatMap[F, ApiResp] { case (key, vals) =>
+          .flatMap[F, Int] { case (key, vals) =>
             Stream.eval(apiAggregator.getProjectToken(key.some))
-              .flatMap[F, ApiResp](tryPersistRcSpecimenPipeS(vals))
+              .flatMap[F, Int](tryPersistRcSpecimenPipeS(vals))
           }
       }
-      .through(handlePersistResponse)      
+      // .through(handlePersistResponse)      
 }
 
 object LvToRcAggregator {

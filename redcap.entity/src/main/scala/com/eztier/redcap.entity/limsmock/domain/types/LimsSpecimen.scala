@@ -25,7 +25,8 @@ case class LimsSpecimen
   id: Option[Long] = None,
   processed: Option[Int] = None,
   date_processed: Option[Instant] = None,
-  response: Option[String] = None
+  response: Option[String] = None,
+  error: Option[String] = None
 )
 
 object LimsSpecimen {

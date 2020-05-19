@@ -45,6 +45,18 @@ private object LimsSpecimenSQL {
       .updateMany(a)
   }
 
+  def updateManySql(a: List[LimsSpecimen]): ConnectionIO[Int] = {
+    val stmt = """
+      insert into labvantage.limsspecimen (SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE, id, processed, date_processed, response, error)
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      on conflict(id)
+      do update set processed = EXCLUDED.processed, date_processed = EXCLUDED.date_processed, response = EXCLUDED.response, error = EXCLUDED.error
+    """
+
+    Update[LimsSpecimen](stmt)
+      .updateMany(a)
+  }
+
   def findByIdSql(a: Option[String]): Query0[LimsSpecimen] =
     sql"""select SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE
          from labvantage.limsspecimen where redcapid = ${a.getOrElse("")}""".query
@@ -60,6 +72,8 @@ class DoobieLimsSpecimenRepositoryInterpreter[F[_]: Bracket[?[_], Throwable]](va
   import LimsSpecimenSQL._
 
   override def insertMany(a: List[LimsSpecimen]): F[Int] = insertManySql(a).transact(xa)
+
+  override def updateMany(a: List[LimsSpecimen]): F[Int] = updateManySql(a).transact(xa)
 
   override def listUnprocessed: Stream[F, LimsSpecimen] = listSql.stream.transact(xa)
 

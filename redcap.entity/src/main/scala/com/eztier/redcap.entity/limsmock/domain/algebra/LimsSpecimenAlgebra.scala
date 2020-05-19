@@ -11,6 +11,8 @@ trait LimsSpecimenAlgebra[F[_]] {
 
   def insertMany(recs: List[LimsSpecimen]): F[Int]
 
+  def updateMany(recs: List[LimsSpecimen]): F[Int]
+
   def findById(id: Option[String]): OptionT[F, Option[LimsSpecimen]]
 
   def getMaxDateProcessed: OptionT[F, Option[Instant]]

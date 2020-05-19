@@ -18,6 +18,9 @@ class LimsSpecimenService[F[_]: Functor: Applicative: Sync](repository: LimsSpec
   def insertMany(recs: List[LimsSpecimen]): F[Int] =
     repository.insertMany(recs)
 
+  def updateMany(recs: List[LimsSpecimen]): F[Int] =
+    repository.updateMany(recs)
+
   def findById(id: Option[String]): EitherT[F, List[String], Option[LimsSpecimen]] =
     repository.findById(id)
       .toRight(List(s"Failed to find project token."))

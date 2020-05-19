@@ -57,7 +57,7 @@ object App extends IOApp {
 
     r.use { case lvToRcAggregator =>
 
-      val io = lvToRcAggregator
+      val io1 = lvToRcAggregator
         .runUnprocessed
         .compile
         .drain
@@ -66,6 +66,8 @@ object App extends IOApp {
         .fetchNext
         .compile
         .drain
+
+      val io = IO.suspend(io1 *> io2)   
 
       repeat(io).unsafeRunSync()
     }
