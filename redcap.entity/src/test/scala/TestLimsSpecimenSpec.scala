@@ -190,6 +190,8 @@ class TestLimsSpecimenSpec extends Specification {
           }
         }
 
+      def fetchNext = ???
+      /*
       def fetchNext[F[_]: Sync](lvToRcAggregator: LvToRcAggregator[F]): Stream[F, ApiResp] =
         Stream.eval(lvToRcAggregator.localLimsSpecimenService.list())
           .flatMap[F, ApiResp] { x =>
@@ -204,6 +206,7 @@ class TestLimsSpecimenSpec extends Specification {
                   .flatMap[F, ApiResp](tryPersistRcSpecimenPipeS(vals, lvToRcAggregator))
               }
           }
+      */
 
       def handlePersistResponse[F[_]: Sync]: Stream[F, ApiResp] => Stream[F, Unit] =
         s =>
@@ -214,7 +217,8 @@ class TestLimsSpecimenSpec extends Specification {
 
       createLvToRcAggregatorResource[IO].use {
         case lvToRcAggregator =>
-          IO.delay(fetchNext[IO](lvToRcAggregator).through(handlePersistResponse).compile.drain.unsafeRunSync())
+          // IO.delay(fetchNext[IO](lvToRcAggregator).through(handlePersistResponse).compile.drain.unsafeRunSync())
+          IO.unit
       }.unsafeRunSync()
 
       1 mustEqual 1
@@ -226,11 +230,29 @@ class TestLimsSpecimenSpec extends Specification {
     "Run Unprocessed" in {
       createLvToRcAggregatorResource[IO].use {
         case lvToRcAggregator =>
+
+          val io1 = lvToRcAggregator
+            .runUnprocessed
+            .compile
+            .drain
+
+          val io2 = lvToRcAggregator
+            .fetchNext
+            .compile
+            .drain
+
+          val io = IO.suspend(io1 *> io2)
+
+          io.unsafeRunSync()
+
+          IO.unit
+          /*
           IO.delay(lvToRcAggregator
             .runUnprocessed
             .compile
             .drain
             .unsafeRunSync())
+          */
       }.unsafeRunSync()
 
       1 mustEqual 1

@@ -57,6 +57,11 @@ object CSVConverter {
     def to(i: Int): String = i.toString
   }
 
+  implicit def longCsvConverter: CSVConverter[Long] = new CSVConverter[Long] {
+    def from(s: String): Try[Long] = Try(s.toLong)
+    def to(i: Long): String = i.toString
+  }
+
   implicit def localDateConverter: CSVConverter[LocalDate] = new CSVConverter[LocalDate] {
     def from(s: String): Try[LocalDate] = Try(LocalDate.parse(s, defaultLocalDateFormatter))
     def to(i: LocalDate): String = i.format(defaultLocalDateFormatter)
