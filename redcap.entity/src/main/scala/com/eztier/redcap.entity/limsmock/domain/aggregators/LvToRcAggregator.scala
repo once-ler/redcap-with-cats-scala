@@ -85,11 +85,14 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
       }
 
   private def rcSpecimenToLimsSpecimen(batch: List[RcSpecimen], vals: List[LimsSpecimen]): List[LimsSpecimen] =
-    batch.map { d =>
-      val maybeWithStudyLinkId = vals.find(t => t.STUDYLINKID == d.RecordId && t.SAMPLEKEY == d.SpecSampleKey)
-      val maybeWithMrn = vals.find(t => t.U_MRN == d.RecordId && t.SAMPLEKEY == d.SpecSampleKey)
-
-      maybeWithStudyLinkId <+> maybeWithMrn
+    vals.map { d =>
+      val maybeWithStudyLinkId = batch.find(t => d.STUDYLINKID == t.RecordId && d.SAMPLEKEY == t.SpecSampleKey)
+      val maybeWithMrn = batch.find(t => d.U_MRN == t.RecordId && d.SAMPLEKEY == t.SpecSampleKey)
+      val e = maybeWithStudyLinkId <+> maybeWithMrn
+      e match {
+        case Some(a) => d.some
+        case _ => None
+      }
     }
     .filter(_.isDefined)
     .map(_.get)
@@ -132,10 +135,8 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
                 apiAggregator
                   .apiService
                   .importData[List[RcSpecimen]] (ln._2, Chain("content" -> "record") ++ Chain("token" -> token.getOrElse("")))
-                  .flatMap(a => Stream.emit((ln._2, a)).covary[F])
+                  .flatMap[F, (List[RcSpecimen], ApiResp)](a => Stream.emit((ln._2, a)).covary[F])
               case Left(e) =>
-                // Report error.
-                // println(e.show)
                 Stream.emit((samples, ApiError(Json.Null, e.show))).covary[F]
             }
         }
@@ -169,13 +170,18 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
 
       sampleValueToRcSpecimenPipeS(vals)
         .flatMap[F, Int] { s0 =>
-          // Group by RecordId, fetch instruments for form 1 time.
-          val s1 = s0.groupBy(_.RecordId.getOrElse(""))
-            .mapValues(_.sortBy(_.SpecSampleKey.getOrElse("")))
-            .toList
+          token.isDefined match {
+            case a if a == true =>
+              // Group by RecordId, fetch instruments for form 1 time.
+              val s1 = s0.groupBy(_.RecordId.getOrElse(""))
+                .mapValues(_.sortBy(_.SpecSampleKey.getOrElse("")))
+                .toList
 
-          tryPersistListRcSpecimenImplPipeS(s1, token)
-            .flatMap(handlePersistResponse(vals))
+              tryPersistListRcSpecimenImplPipeS(s1, token)
+                .flatMap(handlePersistResponse(vals))
+            case _ =>
+              handlePersistResponse(vals)(s0, ApiError(Json.Null, "REDCAPID is missing."))
+          }
         }
     }
 
@@ -188,7 +194,7 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
       .flatMap(remoteLimsSpecimenService.list(_))
       .chunkN(20)
       .map(_.toList)
-      .flatMap(Stream.eval(localLimsSpecimenService.insertMany(_)))
+      .flatMap[F, Int](x => Stream.eval(localLimsSpecimenService.insertMany(x)))
       
   def runUnprocessed: Stream[F, Int] =
     localLimsSpecimenService
@@ -196,7 +202,7 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
       .chunkN(20)
       .map(_.toList)
       .flatMap[F, Int] { x =>
-        val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get)
+        val y = x.groupBy(_.REDCAPID.getOrElse(""))
           .mapValues(_.sortBy(_.SAMPLEKEY.getOrElse("")))
           .toList
 
@@ -205,7 +211,7 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
           .flatMap[F, Int] { case (key, vals) =>
             Stream.eval(apiAggregator.getProjectToken(key.some))
               .flatMap[F, Int](tryPersistRcSpecimenPipeS(vals))
-          }
+        }
       }      
 }
 

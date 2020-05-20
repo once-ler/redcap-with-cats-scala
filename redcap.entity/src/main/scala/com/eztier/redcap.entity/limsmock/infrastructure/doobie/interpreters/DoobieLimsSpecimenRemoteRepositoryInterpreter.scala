@@ -52,7 +52,7 @@ private object LimsSpecimenRemoteSQL {
 
   val listCriteriaFragment: Option[Instant] => Fragment =
     maybeDate => maybeDate match {
-      case Some(a) => fr" and s_sample.moddt >= ${a}"
+      case Some(a) => fr" and s_sample.moddt > ${a}"
       case None => Fragment.empty
     }
 

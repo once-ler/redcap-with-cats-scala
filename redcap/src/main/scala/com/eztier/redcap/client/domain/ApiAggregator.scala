@@ -2,12 +2,12 @@ package com.eztier.redcap.client
 package domain
 
 import cats.implicits._
-import cats.Functor
+import cats.{Applicative, Functor}
 import cats.data.Chain
 import fs2.{Pipe, Stream}
 import io.circe.Encoder
 
-class ApiAggregator[F[_]: Functor](
+class ApiAggregator[F[_]: Functor : Applicative](
   val apiService: ApiService[F],
   val tokenService: ProjectTokenService[F]
 ) {
@@ -74,15 +74,20 @@ class ApiAggregator[F[_]: Functor](
   }
 
   def getProjectToken(key: Option[String]): F[Option[ProjectToken]] =
-    tokenService
-      .findById(key)
-      .fold(_ => None, a => a)
-
+    key match {
+      case Some(a) if !a.isEmpty =>
+        tokenService
+          .findById(key)
+          .fold(_ => None, a => a)
+      case _ =>
+        val n: Option[ProjectToken] = None
+        n.pure[F]
+    }
 
 }
 
 object ApiAggregator {
-  def apply[F[_]: Functor](
+  def apply[F[_]: Functor : Applicative](
     apiService: ApiService[F],
     tokenService: ProjectTokenService[F]
   ): ApiAggregator[F] =
