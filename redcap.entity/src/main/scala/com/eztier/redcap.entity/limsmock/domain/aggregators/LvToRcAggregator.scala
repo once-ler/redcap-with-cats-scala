@@ -169,15 +169,14 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
 
       sampleValueToRcSpecimenPipeS(vals)
         .flatMap[F, Int] { s0 =>
+          // Group by RecordId, fetch instruments for form 1 time.
+          val s1 = s0.groupBy(_.RecordId.getOrElse(""))
+            .mapValues(_.sortBy(_.SpecSampleKey.getOrElse("")))
+            .toList
 
-        // Group by RecordId, fetch instruments for form 1 time.
-        val s1 = s0.groupBy(_.RecordId.getOrElse(""))
-          .mapValues(_.sortBy(_.SpecSampleKey.getOrElse("")))
-          .toList
-
-        tryPersistListRcSpecimenImplPipeS(s1, token)
-          .flatMap(handlePersistResponse(vals))
-      }
+          tryPersistListRcSpecimenImplPipeS(s1, token)
+            .flatMap(handlePersistResponse(vals))
+        }
     }
 
   def fetchNext: Stream[F, Int] =
@@ -188,27 +187,9 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
       )
       .flatMap(remoteLimsSpecimenService.list(_))
       .chunkN(20)
-      .flatMap { c =>
-        val l = c.toList
-        Stream
-          .eval(localLimsSpecimenService.insertMany(l))
-          // .map(_ => l)
-      }
-      /*
-      .flatMap[F, ApiResp] { x =>
-        val y = x.filter(_.REDCAPID.isDefined).groupBy(_.REDCAPID.get)
-          .mapValues(_.sortBy(_.SAMPLEKEY.getOrElse("")))
-          .toList
-
-        Stream.emits(y)
-          .covary[F]
-          .flatMap[F, ApiResp] { case (key, vals) =>
-            Stream.eval(apiAggregator.getProjectToken(key.some))
-              .flatMap[F, ApiResp](tryPersistRcSpecimenPipeS(vals))
-          }
-      }
-      */
-
+      .map(_.toList)
+      .flatMap(Stream.eval(localLimsSpecimenService.insertMany(_)))
+      
   def runUnprocessed: Stream[F, Int] =
     localLimsSpecimenService
       .listUnprocessed
@@ -225,8 +206,7 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
             Stream.eval(apiAggregator.getProjectToken(key.some))
               .flatMap[F, Int](tryPersistRcSpecimenPipeS(vals))
           }
-      }
-      // .through(handlePersistResponse)      
+      }      
 }
 
 object LvToRcAggregator {
