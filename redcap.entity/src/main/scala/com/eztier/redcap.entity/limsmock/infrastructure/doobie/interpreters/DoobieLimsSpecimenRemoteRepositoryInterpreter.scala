@@ -27,6 +27,7 @@ private object LimsSpecimenRemoteSQL {
 
   val listFragment = fr"""
     select
+    null id,
     s_samplefamily.sstudyid SSTUDYID,
     s_study.u_redcap_projectid REDCAPID,
     s_subject.u_mrn U_MRN,
@@ -40,7 +41,6 @@ private object LimsSpecimenRemoteSQL {
     to_char(s_samplefamily.collectiondt,'YYYY-MM-DD') as SAMPLE_COLLECTION_DATE,
     to_char(s_sample.createdt,'YYYY-MM-DD HH24:MI:SS') CREATEDATE,
     to_char(s_sample.moddt,'YYYY-MM-DD HH24:MI:SS') MODIFYDATE,
-    null id,
     0 processed,
     null date_processed,
     null response,

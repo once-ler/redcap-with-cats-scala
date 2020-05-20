@@ -5,10 +5,12 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDate}
 import io.circe.{Decoder, Encoder}
 import scala.util.Try
+import shapeless._
 import com.eztier.common.Util._
 
 case class LimsSpecimen
 (
+  id: Option[Long] = None,
   SSTUDYID: Option[String] = None,
   REDCAPID: Option[String] = None,
   U_MRN: Option[String] = None,
@@ -22,7 +24,6 @@ case class LimsSpecimen
   SAMPLE_COLLECTION_DATE: Option[LocalDate] = None,
   CREATEDATE: Option[Instant] = None,
   MODIFYDATE: Option[Instant] = None,
-  id: Option[Long] = None,
   processed: Option[Int] = None,
   date_processed: Option[Instant] = None,
   response: Option[String] = None,

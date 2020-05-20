@@ -8,10 +8,11 @@ import cats.effect.{Bracket, Sync}
 import doobie.{ConnectionIO, Query0, Transactor, _}
 import doobie.implicits._
 import io.chrisdavenport.log4cats.Logger
-import java.time.Instant
-import fs2.Stream
-import scala.util.{Failure, Success, Try}
+import java.time.{Instant, LocalDate}
 
+import fs2.Stream
+
+import scala.util.{Failure, Success, Try}
 import com.eztier.redcap.entity.limsmock._
 import domain.types._
 import domain.algebra._
@@ -26,7 +27,7 @@ private object LimsSpecimenSQL {
     Meta[java.sql.Timestamp].imap(_.toInstant)(java.sql.Timestamp.from)
 
   val listFragment = fr"""
-    select SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE
+    select id, SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE, processed, date_processed, response, error
     from labvantage.limsspecimen
   """
 
@@ -36,18 +37,22 @@ private object LimsSpecimenSQL {
     (listFragment ++ listCriteriaFragment).query
 
   def insertManySql(a: List[LimsSpecimen]): ConnectionIO[Int] = {
-    val stmt = """
+    val b = a.map { d =>
+      (d.SSTUDYID, d.REDCAPID, d.U_MRN, d.U_FIRSTNAME, d.U_LASTNAME, d.BIRTHDATE, d.STUDYLINKID, d.USE_STUDYLINKID, d.SAMPLEKEY, d.SAMPLEVALUE, d.SAMPLE_COLLECTION_DATE, d.CREATEDATE, d.MODIFYDATE)
+    }
+
+    val stmt = s"""
       insert into labvantage.limsspecimen (SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE)
       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
-    Update[LimsSpecimen](stmt)
-      .updateMany(a)
+    Update[(Option[String], Option[String], Option[String], Option[String], Option[String], Option[LocalDate], Option[String], Option[Int], Option[String], Option[String], Option[LocalDate], Option[Instant], Option[Instant])](stmt)
+      .updateMany(b)
   }
 
   def updateManySql(a: List[LimsSpecimen]): ConnectionIO[Int] = {
     val stmt = """
-      insert into labvantage.limsspecimen (SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE, id, processed, date_processed, response, error)
+      insert into labvantage.limsspecimen (id, SSTUDYID, REDCAPID, U_MRN, U_FIRSTNAME, U_LASTNAME, BIRTHDATE, STUDYLINKID, USE_STUDYLINKID, SAMPLEKEY, SAMPLEVALUE, SAMPLE_COLLECTION_DATE, CREATEDATE, MODIFYDATE, processed, date_processed, response, error)
       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       on conflict(id)
       do update set processed = EXCLUDED.processed, date_processed = EXCLUDED.date_processed, response = EXCLUDED.response, error = EXCLUDED.error
