@@ -12,6 +12,7 @@ import randmock._
 import limsmock._
 
 import scala.concurrent.duration._
+/*
 object App2 extends IOApp {
 
   def createAggregators[F[_]: ContextShift: ConcurrentEffect: Timer]: IO[Unit] = {
@@ -38,6 +39,7 @@ object App2 extends IOApp {
       createAggregators[IO].unsafeRunSync()
     ).as(ExitCode.Success)
 }
+*/
 
 object App extends IOApp {
 
