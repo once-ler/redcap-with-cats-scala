@@ -37,13 +37,13 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
   private val lvToRcKeyMap = Map[String, String](
       "LV ParticipantID" -> "spec_lv_participant_id",
       "EVENT" -> "spec_event",
-      "SPR" -> "spec_spr",
-      "SAMPLE_PARENTID" -> "spec_sample_parent_id",
+      "SURGICAL_PATHOLOGY_NUMBER" -> "spec_surgical_path_nbr",
+      "ANATOMIC_SITE" -> "spec_anatomic_site",
       "TISSUE_STATUS" -> "spec_tissue_status",
       "QUANTITY" -> "spec_quantity",
       "UNIT" -> "spec_unit",
-      "CONTAINER_TYPE" -> "spec_container_type",
       "STORAGE_STATUS" -> "spec_storage_status",
+      "SAMPLE_TYPE" -> "spec_sample_type",
       "LOCATION" -> "spec_location"
     )
 
