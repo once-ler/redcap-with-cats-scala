@@ -75,7 +75,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
       })
   }
 
-  def toMaybeTypeS[A](implicit ev: Decoder[A]): String => Stream[F, Either[Chain[String], A]] =
+  def toMaybeTypeS[A](formData: UrlForm)(implicit ev: Decoder[A]): String => Stream[F, Either[Chain[String], A]] =
     in => {
       val json: Json = parse(in).getOrElse(Json.fromString(in))
 
@@ -83,7 +83,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
       Stream.emit(maybeA match {
         case Right(a) => Right(a)
-        case Left(e) => Left(Chain.one(s"${e.message}: ${in}"))
+        case Left(e) => Left(Chain.one(s"Request: ${formData.toString} Error: ${e.printStackTraceAsString}: ${in}"))
       })
     }
 
@@ -144,7 +144,7 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
     val request: Request[F] = createRequest(formData)
 
     clientBodyStream(request)
-      .flatMap(toMaybeTypeS)
+      .flatMap(toMaybeTypeS(formData))
   }
 
   override def showLog: F[String] =
