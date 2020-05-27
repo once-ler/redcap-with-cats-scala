@@ -14,19 +14,19 @@ case class RcSpecimen
   RedcapRepeatInstrument: Option[String] = Some("research_specimens"),
   RecordId: Option[String] = None,
   RedcapRepeatInstance: Option[Int] = None,
-  SpecDate: Option[LocalDate] = None,
   SpecLvParticipantId: Option[String] = None,
   SpecEvent: Option[String] = None,
-  SpecSpr: Option[String] = None,
-  SpecSampleParentId: Option[String] = None,
+  SpecDate: Option[LocalDate] = None,
+  SpecSampleType: Option[String] = None,
+  SpecSampleKey: Option[String] = None,
   SpecTissueStatus: Option[String] = None,
+  SpecAnatomicSite: Option[String] = None,
+  SpecSurgicalPathNbr: Option[String] = None,
   SpecQuantity: Option[String] = None,
   SpecUnit: Option[String] = None,
-  SpecContainerType: Option[String] = None,
   SpecStorageStatus: Option[String] = None,
   SpecLocation: Option[String] = None,
-  SpecModifyDate: Option[Instant] = None,
-  SpecSampleKey: Option[String] = None
+  SpecModifyDate: Option[Instant] = None
 )
 
 object RcSpecimen {
