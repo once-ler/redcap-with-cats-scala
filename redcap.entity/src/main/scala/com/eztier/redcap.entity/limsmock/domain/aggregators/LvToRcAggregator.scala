@@ -22,7 +22,9 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
   val remoteLimsSpecimenService: LimsSpecimenRemoteService[F]
 ) {
 
-  private def record(forms: Option[String], patid: Option[String] = None, filter: Option[String] = None): Chain[(String, String)] =
+  private val lvRcSubjectIdFieldName = "lvrc_subject_id"
+
+  private def record(forms: Option[String], patid: Option[String] = None, filter: Option[String] = None, fields: Option[String] = None): Chain[(String, String)] =
     Chain(
       "content" -> "record",
       "forms" -> forms.getOrElse("")
@@ -31,6 +33,9 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
       case None => Chain.empty[(String, String)]
     }) ++ (filter match {
       case Some(a) => Chain("filterLogic" -> a)
+      case None => Chain.empty[(String, String)]
+    }) ++ (fields match {
+      case Some(a) => Chain("fields" -> a)
       case None => Chain.empty[(String, String)]
     })
 
@@ -184,6 +189,30 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
           }
         }
     }
+
+  private def tryFindRcSubject(s0: List[RcSpecimen], vals: List[(String, List[RcSpecimen])], token: Option[String]): Stream[F, Either[Chain[String], List[Json]]] ={
+
+    Stream.emits(vals)
+      .covary[F]
+      .flatMap[F, (List[RcSpecimen], ApiResp)] { case (recordId, samples) =>
+
+      val body = record(None, None, s"${lvRcSubjectIdFieldName}='${recordId}'".some, lvRcSubjectIdFieldName.some) ++ Chain("token" -> token.getOrElse(""))
+      apiAggregator
+        .apiService
+        .exportData[List[Json]](body)
+        .flatMap[F, Either[Chain[String], List[Json]]] { m =>
+        m match {
+          case Right(a) =>
+
+          case Left(e) =>
+            handlePersistResponse(samples)(s0, ApiError(Json.Null, "LVRC_SUBJECT_ID is missing."))
+        }
+
+      }
+
+      ???
+    }
+  }
 
   def fetchNext: Stream[F, Int] =
     Stream.eval(
