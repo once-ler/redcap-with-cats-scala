@@ -182,37 +182,31 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
                 .mapValues(_.sortBy(_.SpecSampleKey.getOrElse("")))
                 .toList
 
-              tryPersistListRcSpecimenImplPipeS(s1, token)
-                .flatMap(handlePersistResponse(vals))
+              tryFindRcSubject(token, vals, s1)
             case _ =>
               handlePersistResponse(vals)(s0, ApiError(Json.Null, "REDCAPID is missing."))
           }
         }
     }
 
-  private def tryFindRcSubject(s0: List[RcSpecimen], vals: List[(String, List[RcSpecimen])], token: Option[String]): Stream[F, Either[Chain[String], List[Json]]] ={
-
-    Stream.emits(vals)
+  private def tryFindRcSubject(token: Option[String], vals: List[LimsSpecimen], s1: List[(String, List[RcSpecimen])]): Stream[F, Int] =
+    Stream.emits(s1)
       .covary[F]
-      .flatMap[F, (List[RcSpecimen], ApiResp)] { case (recordId, samples) =>
-
-      val body = record(None, None, s"${lvRcSubjectIdFieldName}='${recordId}'".some, lvRcSubjectIdFieldName.some) ++ Chain("token" -> token.getOrElse(""))
-      apiAggregator
-        .apiService
-        .exportData[List[Json]](body)
-        .flatMap[F, Either[Chain[String], List[Json]]] { m =>
-        m match {
-          case Right(a) =>
-
-          case Left(e) =>
-            handlePersistResponse(samples)(s0, ApiError(Json.Null, "LVRC_SUBJECT_ID is missing."))
-        }
-
+      .flatMap[F, Int] { case (recordId, samples) =>
+        val body = record(None, None, s"${lvRcSubjectIdFieldName}='${recordId}'".some, lvRcSubjectIdFieldName.some) ++ Chain("token" -> token.getOrElse(""))
+        apiAggregator
+          .apiService
+          .exportData[List[Json]](body)
+          .flatMap[F, Int] { m =>
+            m match {
+              case Right(a) if a.nonEmpty =>
+                tryPersistListRcSpecimenImplPipeS(s1, token)
+                  .flatMap(handlePersistResponse(vals))
+              case _ =>
+                handlePersistResponse(vals)(samples, ApiError(Json.Null, "LVRC_SUBJECT_ID is missing."))
+            }
+          }
       }
-
-      ???
-    }
-  }
 
   def fetchNext: Stream[F, Int] =
     Stream.eval(
