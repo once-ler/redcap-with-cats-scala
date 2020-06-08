@@ -143,8 +143,10 @@ class HttpInterpreter[F[_]: Functor: ConcurrentEffect: ContextShift[?[_]]]
 
     val request: Request[F] = createRequest(formData)
 
-    clientBodyStream(request)
+    val fa = clientBodyStream(request)
       .compile.toVector.flatMap(_.mkString("").pure[F])
+
+    Stream.eval(fa)
       .flatMap(toMaybeTypeS(formData))
   }
 

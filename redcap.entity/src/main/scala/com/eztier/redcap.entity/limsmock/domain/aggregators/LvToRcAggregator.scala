@@ -1,16 +1,15 @@
 package com.eztier.redcap.entity.limsmock
 package domain.aggregators
 
-import cats._
 import cats.data._
 import cats.implicits._
 import cats.Functor
 import cats.effect.{Sync, ConcurrentEffect, ContextShift}
-import fs2.{Pipe, Stream}
+import fs2.{Stream}
 import io.circe.Json
 import io.circe.optics.JsonPath._
 
-import com.eztier.common.{CSVConfig, CSVConverter, CaseClassFromMap}
+import com.eztier.common.{CaseClassFromMap}
 import com.eztier.redcap.client.domain.{ApiAggregator, ApiOk, ApiError, ApiResp, ProjectToken}
 import domain.types.{LimsSpecimen, RcSpecimen}
 import domain.services.{LimsSpecimenService, LimsSpecimenRemoteService}
@@ -103,11 +102,11 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
     .filter(_.isDefined)
     .map(_.get)
 
-  private def tryPersistListRcSpecimenImplPipeS(vals: List[(String, List[RcSpecimen])], token: Option[String], rcRecordId: Option[String] = None): Stream[F, (List[RcSpecimen], ApiResp)] =
+  private def tryPersistListRcSpecimenImplPipeS(vals: List[(String, List[RcSpecimen])], token: Option[String]): Stream[F, (List[RcSpecimen], ApiResp)] =
     Stream.emits(vals)
       .covary[F]
-      .flatMap[F, (List[RcSpecimen], ApiResp)] { case (_, samples) =>
-        val body = record("research_specimens".some, rcRecordId) ++ Chain("token" -> token.getOrElse(""))
+      .flatMap[F, (List[RcSpecimen], ApiResp)] { case (recordId, samples) =>
+        val body = record("research_specimens".some, recordId.some) ++ Chain("token" -> token.getOrElse(""))
 
         apiAggregator
           .apiService
@@ -115,9 +114,7 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
           .flatMap[F, (List[RcSpecimen], ApiResp)] { m =>
             m match {
               case Right(l) =>
-                // Use the actual record_id stored in REDCap.
-                val samplesWithRcRecordId = samples.map(a => a.copy(RecordId = rcRecordId))
-                val samplesSorted = samplesWithRcRecordId.sortBy(_.SpecSampleKey.getOrElse(""))
+                val samplesSorted = samples.sortBy(_.SpecSampleKey.getOrElse(""))
 
                 val sec1 = l.map(a => a.SpecSampleKey.getOrElse("")).sorted
                   .zipWithIndex
@@ -203,8 +200,12 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
           .flatMap[F, Int] { m =>
             m match {
               case Right(a) if a.nonEmpty =>
+                // Use the actual record_id stored in REDCap.
                 val recordIdPath = root.record_id.string
-                tryPersistListRcSpecimenImplPipeS(List((recordId, samples)), token, recordIdPath.getOption(a.head))
+                val rcRecordId = recordIdPath.getOption(a.head)
+                val samplesWithRcRecordId = samples.map(a => a.copy(RecordId = rcRecordId))
+
+                tryPersistListRcSpecimenImplPipeS(List((rcRecordId.getOrElse(""), samplesWithRcRecordId)), token)
                   .flatMap(handlePersistResponse(vals))
               case _ =>
                 handlePersistResponse(vals)(samples, ApiError(Json.Null, "LVRC_SUBJECT_ID is missing."))
