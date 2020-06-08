@@ -196,7 +196,7 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
     Stream.emits(s1)
       .covary[F]
       .flatMap[F, Int] { case (recordId, samples) =>
-        val body = record(None, None, s"${lvRcSubjectIdFieldName}='${recordId}'".some, "record_id".some) ++ Chain("token" -> token.getOrElse(""))
+        val body = record(None, None, s"[${lvRcSubjectIdFieldName}]='${recordId}'".some, "record_id".some) ++ Chain("token" -> token.getOrElse(""))
         apiAggregator
           .apiService
           .exportData[List[Json]](body)
