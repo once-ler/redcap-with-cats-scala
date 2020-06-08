@@ -204,8 +204,7 @@ class LvToRcAggregator[F[_]: Sync: Functor: ConcurrentEffect: ContextShift[?[_]]
             m match {
               case Right(a) if a.nonEmpty =>
                 val recordIdPath = root.record_id.string
-
-                tryPersistListRcSpecimenImplPipeS(s1, token, recordIdPath.getOption(a.head))
+                tryPersistListRcSpecimenImplPipeS(List((recordId, samples)), token, recordIdPath.getOption(a.head))
                   .flatMap(handlePersistResponse(vals))
               case _ =>
                 handlePersistResponse(vals)(samples, ApiError(Json.Null, "LVRC_SUBJECT_ID is missing."))

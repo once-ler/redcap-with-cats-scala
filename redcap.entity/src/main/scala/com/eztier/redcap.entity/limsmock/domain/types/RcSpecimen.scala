@@ -26,7 +26,8 @@ case class RcSpecimen
   SpecUnit: Option[String] = None,
   SpecStorageStatus: Option[String] = None,
   SpecLocation: Option[String] = None,
-  SpecModifyDate: Option[Instant] = None
+  SpecModifyDate: Option[Instant] = None,
+  ResearchSpecimensComplete: Option[String] = None
 )
 
 object RcSpecimen {
