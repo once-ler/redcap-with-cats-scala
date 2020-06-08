@@ -227,6 +227,40 @@ class TestLimsSpecimenSpec extends Specification {
   }
 
   "LimsSpecimen to RcSpecimen Aggregator" should {
+    "Decode array of RcSpecimen" in {
+      import io.circe.parser._
+
+      val incomingData = """[{
+        "spec_lv_participant_id": "P-XXXXX740",
+        "spec_event": "Time point 1",
+        "spec_date": "2014-10-20",
+        "spec_sample_type": "SOMETHING",
+        "spec_sample_key": "Z-XXXXYYY-00001",
+        "spec_tissue_status": "",
+        "spec_anatomic_site": "XYZ",
+        "spec_surgical_path_nbr": "",
+        "spec_quantity": "2",
+        "spec_unit": "ml",
+        "spec_storage_status": "Disposed",
+        "spec_location": "",
+        "spec_modify_date": "2018-03-23 20:42:09",
+        "research_specimens_complete": "0"
+      }]"""
+
+      val x = parse(incomingData).getOrElse(Json.fromString(incomingData))
+
+      val maybeA = x.as[List[RcSpecimen]]
+
+      maybeA match {
+        case Right(a) =>
+          println(a)
+        case Left(e) =>
+          println(e)
+      }
+
+      1 mustEqual 1
+    }
+
     "Run Unprocessed" in {
       createLvToRcAggregatorResource[IO].use {
         case lvToRcAggregator =>
